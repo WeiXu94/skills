@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# nnw-daily: fetch today's unread articles, get their full text, summarize with an LLM.
+#
+# Usage:
+#   nnw-daily [--since-hours N] [--limit N] [--out FILE]
+#
+# Defaults: --since-hours 24, --limit 30, output to stdout.
+#
+# LLM backend (one of, in priority order):
+#   1) $LLM_CMD          : a shell command that reads prompt on stdin and writes summary on stdout.
+#                          Example: export LLM_CMD='llm -m claude-opus-4'
+#   2) $ANTHROPIC_API_KEY: uses curl to call Anthropic /v1/messages directly.
+#
+# Output: a Markdown report. Each article gets a 2-3 sentence summary; at the end,
+# a "Top picks" section names the most interesting ones.
+
+set -euo pipefail
+
+SINCE_HOURS=24
+LIMIT=30
+OUT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --since-hours) SINCE_HOURS="$2"; shift 2 ;;
+    --limit)       LIMIT="$2"; shift 2 ;;
+    --out)         OUT="$2"; shift 2 ;;
+    -h|--help)     sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+echo "→ fetching unread articles (last ${SINCE_HOURS}h, max ${LIMIT})..." >&2
+"$BIN_DIR/nnw-articles" --unread --since-hours "$SINCE_HOURS" --limit "$LIMIT" \
+  > "$TMP/articles.ndjson"
+
+N=$(wc -l < "$TMP/articles.ndjson" | tr -d ' ')
+if [[ "$N" -eq 0 ]]; then
+  echo "no unread articles." >&2
+  exit 0
+fi
+echo "→ got $N articles, fetching full text..." >&2
+
+# Build a single prompt with all articles' full text.
+PROMPT_FILE="$TMP/prompt.txt"
+{
+  echo "You are summarizing today's RSS articles for a technical reader."
+  echo "For EACH article below, write a 2-3 sentence summary in the same language as the article."
+  echo "Then add a final '## Top picks' section listing the 3-5 most interesting articles by title with a one-line reason each."
+  echo "Use Markdown. Format each article as:"
+  echo ""
+  echo "### <title>"
+  echo "*<feed> · <date>*"
+  echo "<2-3 sentence summary>"
+  echo "[link](<url>)"
+  echo ""
+  echo "---"
+  echo "ARTICLES:"
+  echo "---"
+  jq -r '.id' < "$TMP/articles.ndjson" \
+    | "$BIN_DIR/nnw-read" --batch \
+    | jq -r '"---\nID: \(.id)\nTITLE: \(.title)\nFEED: \(.feed)\nDATE: \(.date)\nURL: \(.url)\nAUTHORS: \(.authors)\nTEXT:\n\(.text // .summary)\n"'
+} > "$PROMPT_FILE"
+
+echo "→ prompt size: $(wc -c < "$PROMPT_FILE") bytes" >&2
+echo "→ calling LLM..." >&2
+
+summarize() {
+  if [[ -n "${LLM_CMD:-}" ]]; then
+    eval "$LLM_CMD" < "$PROMPT_FILE"
+  elif [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    local model="${ANTHROPIC_MODEL:-claude-opus-4-7}"
+    jq -Rs --arg model "$model" '{
+      model: $model,
+      max_tokens: 4096,
+      messages: [{role: "user", content: .}]
+    }' < "$PROMPT_FILE" \
+    | curl -sS https://api.anthropic.com/v1/messages \
+        -H "x-api-key: $ANTHROPIC_API_KEY" \
+        -H "anthropic-version: 2023-06-01" \
+        -H "content-type: application/json" \
+        --data-binary @- \
+    | jq -r '.content[0].text // .error.message // "ERROR: empty response"'
+  else
+    echo "ERROR: set \$LLM_CMD or \$ANTHROPIC_API_KEY" >&2
+    return 1
+  fi
+}
+
+if [[ -n "$OUT" ]]; then
+  summarize > "$OUT"
+  echo "→ wrote $OUT" >&2
+else
+  summarize
+fi

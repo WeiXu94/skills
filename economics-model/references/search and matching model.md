@@ -1,0 +1,34 @@
+- first, appear as individual optimization problem. Essentially is the **optimal stopping problem of statstics.**
+	- offer arrival rate and wage-offer distribution is exogenous.
+	- cost of rejecting one offer that have to search for another
+	- benefit of probability of find a better one.
+	- one simple solution - reservation wage $$w \geq R$$
+	- rate at which the worker accepts a job is $$\alpha[1-F(R)]$$
+	- so much of the early search literature focused on the question of **how labor-market policy affects the reservation wage.**
+- equilibrium model
+	- offer arrival rate and wage-offer distribution is treated as endogenous.
+	- two branches of model
+		- 1. wage posting - firms makes a take-it-or-leave-it offer to job
+			- taking into account the distribution of wage offers posted by all other firms in the market and worker reservation-wage strategies.
+			- endogenizing the wage-offer distribution and **has mostly ignored the endogeneity of the offer arrival**.
+			- help us understand equilibrium wage dispersion (i.e., **why equally productive workers need not all be paid the same wage**.)
+		- 2. the offer arrival rate is determined endogenously.
+			- **wage bargaining, known as DMP (Diamond -Mortensen-Pissarides) model**
+			- CES matching function of u and v (the measures of unemployed workers and vacancies)
+			- rate depends on **labor market tightness** ($$\theta=v/u$$)
+			- Labor-market tightness is determined by a free-entry condition. firms post vacancy as long as the expected payoff is positive, which depends on the wage to be paid once the vacancy is filled.
+			- split matching surplus based on the standard approach of Nash bargaining rule with an exogenous share going to the worker.
+			- focuses on endogenizing $$\alpha$$ **while mostly ignoring the possibility of equilibrium wage dispersion**.
+## wage posting models
+	- begin with Diamond paradox 1971
+	- Burdett and Mortensen (1998) - landmark paper
+	- generating **equilibrium wage dispersion** in a model of sequential search in which workers are ex ante identical.
+	- **The key to their model is on-the-job search.**
+## DMP model
+	- focus on the nature of unemployment - demand side
+	- matching function m(u,v)
+	- same wage for all worker
+	- equilibrium of $$\theta$$ and $$w$$
+	- workers receive a wage offer w* at endogenous rate $$\alpha(|theta)$$
+	- directed search -> efficiency (social planner choice)
+	- 

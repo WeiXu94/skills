@@ -1,0 +1,16 @@
+- utility function
+	- CES: multiple goods
+	- CRRA: one good
+	- two period, one period, infinite period (discrete or continous)
+- production function
+	- DRS
+		- only labor $$y=al^\alpha$$
+	- CRS - cobb-douglas
+	- IRS
+	- or minimize cost
+		- cost for producing one unit of good $$C=Qc(w,r)$$
+		- profit $$\pi = PQ-C $$
+		- markup
+	- labor market
+		- wage markdown: $$w$$ over $$MRPL=P*f_L$$
+	- 

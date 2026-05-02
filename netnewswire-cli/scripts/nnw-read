@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# nnw-read: fetch one or more articles' full content by ID.
+#
+# Usage:
+#   nnw-read <article-id>                              # single, JSON
+#   nnw-read <article-id> --text                       # single, plain text only
+#   nnw-read <article-id> --html                       # single, HTML only
+#   nnw-read <article-id> --markdown                   # single, HTML→Markdown (needs `pandoc`)
+#   nnw-read <id1> <id2> [<id3> ...]                   # batch, NDJSON (one object per line)
+#   <pipeline> | nnw-read --batch                      # stdin batch (one ID per line), NDJSON
+#
+# Batch mode amortizes osascript startup across all IDs in one invocation,
+# so a 10-article batch finishes in roughly the time of a single fetch + the
+# Apple Event cost per article. The single-ID interface is preserved.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APPLESCRIPT="$SCRIPT_DIR/read_article.applescript"
+
+usage() {
+  echo "usage: nnw-read <article-id> [--text|--html|--markdown]" >&2
+  echo "       nnw-read <id1> <id2> [<id3> ...]   (batch, NDJSON output)" >&2
+  echo "       <pipeline> | nnw-read --batch      (stdin batch, NDJSON output)" >&2
+  exit 2
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+fi
+
+# Stdin batch: explicit --batch flag and no positional IDs
+if [[ "$1" == "--batch" ]]; then
+  ids=()
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    ids+=("$line")
+  done
+  if [[ ${#ids[@]} -eq 0 ]]; then
+    echo "nnw-read: --batch read 0 IDs from stdin" >&2
+    exit 2
+  fi
+  exec /usr/bin/osascript "$APPLESCRIPT" "${ids[@]}"
+fi
+
+# Multi-arg batch: 2+ args, second arg is not a mode flag
+if [[ $# -ge 2 ]] && [[ "$2" != --* ]]; then
+  exec /usr/bin/osascript "$APPLESCRIPT" "$@"
+fi
+
+# Single-ID mode (preserves the original interface and post-processing flags)
+ID="$1"
+MODE="${2:-json}"
+
+JSON="$(/usr/bin/osascript "$APPLESCRIPT" "$ID")"
+
+case "$MODE" in
+  json)     printf '%s\n' "$JSON" ;;
+  --text)   printf '%s' "$JSON" | jq -r '.text' ;;
+  --html)   printf '%s' "$JSON" | jq -r '.html' ;;
+  --markdown)
+    if ! command -v pandoc >/dev/null; then
+      echo "pandoc not installed (brew install pandoc)" >&2; exit 1
+    fi
+    printf '%s' "$JSON" | jq -r '.html' | pandoc -f html -t gfm --wrap=none ;;
+  *) echo "unknown mode: $MODE" >&2; exit 2 ;;
+esac

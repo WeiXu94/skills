@@ -1,0 +1,14 @@
+- See:
+	- [theory.pdf](theory_1669096867953_0.pdf)
+- workers make a variety of investments in their human capital (set of marketable skills). This perspective is important in understanding both investment incentives, and the structure of wages and earnings.
+- how to measure human capital?
+	- Earnings potential... approximated by actual earnings.
+	- there are non-human capital related sources of earnings differentials
+- The Mincer (1958) Model of Formal Schooling
+	- Individuals are ex-ante homogeneous
+- Ben-Porath(1967): Optimal Human Capital Accumulation
+	- Finite lived to time T, continuous time
+	- flow of human capital produced - at a specific time point
+		- $Q_t = \beta_0 (s_t K_t)^{\beta_1} D_t^{\beta_2}$ with $\beta_1 + \beta_2 < 1$ DRS
+		- $K_t$ - stock of human capital
+		- $\dot{K_t} = Q_t - \delta K_t$ The rate of change of the capital stock

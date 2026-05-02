@@ -1,0 +1,3 @@
+- Eric French. The effects of health, wealth, and wages on labour supply and retirement behaviour. RES
+	- labor supply, 1222 citations
+	- 

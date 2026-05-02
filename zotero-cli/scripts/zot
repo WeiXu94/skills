@@ -1,0 +1,328 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "zotero-mcp-server[semantic]",
+# ]
+# ///
+"""
+zot - minimal Zotero CLI
+
+Two commands:
+  zot search "query" [--keyword | --semantic | --auto] [-n N] [-t TYPE] [-c COLLECTION]
+  zot update-db [--fulltext] [--force-rebuild]
+
+Keyword search hits Zotero's local HTTP API (localhost:23119).
+Semantic search reuses zotero-mcp's ChromaDB index.
+update-db delegates to `zotero-mcp update-db` (don't reimplement what's already solid).
+
+All search output is JSON on stdout. Errors and progress on stderr.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+ZOT_BASE = os.environ.get("ZOTERO_LOCAL_BASE", "http://localhost:23119/api")
+ZOT_USER = os.environ.get("ZOTERO_USER_ID", "0")  # local API: always 0
+ZOT_AUTOSYNC = os.environ.get("ZOT_AUTOSYNC", "1") not in ("0", "false", "False", "no", "")
+ZOT_SYNC_MARKER = Path(
+    os.environ.get(
+        "ZOT_SYNC_MARKER",
+        str(Path.home() / ".config" / "zotero-mcp" / ".zot_last_sync"),
+    )
+)
+
+
+def die(msg: str, code: int = 1) -> None:
+    sys.stderr.write(f"zot: {msg}\n")
+    sys.exit(code)
+
+
+def info(msg: str) -> None:
+    sys.stderr.write(f"zot: {msg}\n")
+
+
+# ---------------------------------------------------------------------------
+# Keyword search via Zotero local API
+# ---------------------------------------------------------------------------
+
+def keyword_search(
+    query: str,
+    *,
+    limit: int,
+    item_type: str,
+    collection: str | None,
+) -> list[dict[str, Any]]:
+    params = {
+        "q": query,
+        "qmode": "titleCreatorYear",
+        "limit": str(limit),
+        "format": "json",
+    }
+    if item_type:
+        params["itemType"] = item_type
+
+    if collection:
+        path = f"/users/{ZOT_USER}/collections/{collection}/items"
+    else:
+        path = f"/users/{ZOT_USER}/items"
+
+    url = f"{ZOT_BASE}{path}?{urllib.parse.urlencode(params)}"
+
+    try:
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.URLError as e:
+        die(
+            f"cannot reach Zotero local API at {ZOT_BASE} ({e.reason}). "
+            "Is Zotero running with 'Allow other applications to communicate' enabled?"
+        )
+    except urllib.error.HTTPError as e:
+        die(f"Zotero API {e.code}: {e.read().decode('utf-8', errors='replace')[:300]}")
+
+    out = []
+    for it in raw:
+        d = it.get("data", {})
+        creators = []
+        for c in d.get("creators", []):
+            if c.get("name"):
+                creators.append(c["name"])
+            else:
+                parts = [c.get("lastName", ""), c.get("firstName", "")]
+                creators.append(", ".join(p for p in parts if p))
+        out.append({
+            "key": it.get("key", ""),
+            "title": d.get("title", ""),
+            "creators": creators,
+            "date": d.get("date", ""),
+            "itemType": d.get("itemType", ""),
+            "abstract": d.get("abstractNote", ""),
+            "tags": [t.get("tag", "") for t in d.get("tags", [])],
+            "DOI": d.get("DOI", ""),
+            "url": d.get("url", ""),
+        })
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Semantic search via zotero-mcp's ChromaClient
+# ---------------------------------------------------------------------------
+
+def _latest_zotero_date_added() -> str | None:
+    """Return the dateAdded (ISO string) of the newest top-level item, or None."""
+    params = {"sort": "dateAdded", "direction": "desc", "limit": "1", "format": "json"}
+    url = f"{ZOT_BASE}/users/{ZOT_USER}/items/top?{urllib.parse.urlencode(params)}"
+    try:
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        info(f"autosync: could not check Zotero ({e}); skipping")
+        return None
+    if not raw:
+        return None
+    return raw[0].get("data", {}).get("dateAdded") or None
+
+
+def _maybe_autosync() -> bool:
+    """Run `zotero-mcp update-db` if Zotero has a newer item than our last sync marker.
+
+    Marker stores the dateAdded of the newest item at the time of the last successful
+    update-db. If Zotero now has a newer item, run update-db. Marker is only advanced
+    on a successful run, so failures retry on the next call.
+
+    Returns True if an update was attempted.
+    """
+    latest = _latest_zotero_date_added()
+    if not latest:
+        return False
+    last = ZOT_SYNC_MARKER.read_text().strip() if ZOT_SYNC_MARKER.exists() else ""
+    if last == latest:
+        return False
+    info(
+        f"autosync: new items in Zotero (latest dateAdded {latest} > "
+        f"{last or 'never synced'}); running 'zotero-mcp update-db'..."
+    )
+    try:
+        rc = subprocess.call(["zotero-mcp", "update-db"], stdout=sys.stderr, stderr=sys.stderr)
+    except FileNotFoundError:
+        info("autosync: `zotero-mcp` not on PATH; continuing with stale index")
+        return False
+    if rc == 0:
+        try:
+            ZOT_SYNC_MARKER.parent.mkdir(parents=True, exist_ok=True)
+            ZOT_SYNC_MARKER.write_text(latest)
+        except OSError as e:
+            info(f"autosync: could not write marker {ZOT_SYNC_MARKER} ({e})")
+    else:
+        info(f"autosync: update-db exited {rc}; marker not updated, will retry next call")
+    return True
+
+
+def semantic_search(query: str, *, limit: int, autosync: bool = True) -> list[dict[str, Any]]:
+    try:
+        from zotero_mcp.chroma_client import create_chroma_client
+    except ImportError:
+        die(
+            "cannot import zotero_mcp. Install it in the python on PATH:\n"
+            "  pip install zotero-mcp-server\n"
+            "  (or: pipx inject zotero-mcp-server zotero-mcp-server)",
+            code=2,
+        )
+
+    if autosync and ZOT_AUTOSYNC:
+        _maybe_autosync()
+    client = create_chroma_client(None)  # falls back to env vars + ~/.config defaults
+    raw = client.search(query_texts=[query], n_results=limit)
+
+    ids = (raw.get("ids") or [[]])[0]
+    docs = (raw.get("documents") or [[]])[0]
+    metas = (raw.get("metadatas") or [[]])[0]
+    dists = (raw.get("distances") or [[]])[0]
+
+    results = []
+    for i, doc_id in enumerate(ids):
+        meta = metas[i] if i < len(metas) else {}
+        dist = dists[i] if i < len(dists) else None
+        # Cosine distance → similarity in [0, 1]; clamp for float drift
+        sim = None if dist is None else max(0.0, min(1.0, 1.0 - float(dist)))
+        doc = docs[i] if i < len(docs) else ""
+        snippet = doc[:300] + "..." if len(doc) > 300 else doc
+        results.append({
+            "id": doc_id,
+            "key": meta.get("item_key", ""),
+            "title": meta.get("title", ""),
+            "creators": meta.get("creators", ""),
+            "date": meta.get("date", ""),
+            "itemType": meta.get("item_type", ""),
+            "DOI": meta.get("doi", ""),
+            "url": meta.get("url", ""),
+            "similarity": sim,
+            "snippet": snippet,
+        })
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+def cmd_search(args: argparse.Namespace) -> int:
+    query = " ".join(args.query).strip()
+    if not query:
+        die("search needs a query string. Try: zot search --help")
+
+    autosync = not args.no_autosync
+
+    if args.semantic:
+        results = semantic_search(query, limit=args.limit, autosync=autosync)
+        out = {"mode": "semantic", "query": query, "results": results}
+    elif args.auto:
+        kw = keyword_search(
+            query,
+            limit=args.limit,
+            item_type=args.item_type,
+            collection=args.collection,
+        )
+        if kw:
+            out = {"mode": "keyword", "query": query, "results": kw}
+        else:
+            info("keyword search returned 0 hits, trying semantic...")
+            sm = semantic_search(query, limit=args.limit, autosync=autosync)
+            out = {"mode": "semantic", "query": query, "fallback": True, "results": sm}
+    else:
+        # default: keyword
+        results = keyword_search(
+            query,
+            limit=args.limit,
+            item_type=args.item_type,
+            collection=args.collection,
+        )
+        out = {"mode": "keyword", "query": query, "results": results}
+
+    json.dump(out, sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+    return 0
+
+
+def cmd_update_db(args: argparse.Namespace) -> int:
+    cli_args = ["zotero-mcp", "update-db"]
+    if args.fulltext:
+        cli_args.append("--fulltext")
+    if args.force_rebuild:
+        cli_args.append("--force-rebuild")
+
+    try:
+        rc = subprocess.call(cli_args)
+    except FileNotFoundError:
+        die("`zotero-mcp` not on PATH. Install with: pip install zotero-mcp-server")
+        return 1  # unreachable, but mypy/pylint friendly
+
+    if rc == 0:
+        latest = _latest_zotero_date_added()
+        if latest:
+            try:
+                ZOT_SYNC_MARKER.parent.mkdir(parents=True, exist_ok=True)
+                ZOT_SYNC_MARKER.write_text(latest)
+            except OSError as e:
+                info(f"could not write autosync marker {ZOT_SYNC_MARKER} ({e})")
+    return rc
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="zot",
+        description="Minimal Zotero CLI: keyword + semantic search over a local library.",
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    # search
+    sp = sub.add_parser("search", help="Search the Zotero library.")
+    sp.add_argument("query", nargs="+", help="Query string (space-separated args are joined).")
+    mode = sp.add_mutually_exclusive_group()
+    mode.add_argument("-k", "--keyword", action="store_true",
+                      help="(default) Substring match via Zotero local API.")
+    mode.add_argument("-s", "--semantic", action="store_true",
+                      help="Vector similarity via ChromaDB (zotero-mcp's index).")
+    mode.add_argument("-a", "--auto", action="store_true",
+                      help="Keyword first; fall back to semantic on 0 hits.")
+    sp.add_argument("-n", "--limit", type=int, default=10, help="Max results (default: 10).")
+    sp.add_argument("-t", "--item-type", default="-attachment",
+                    help="Zotero itemType filter (default: -attachment).")
+    sp.add_argument("-c", "--collection", default=None,
+                    help="Restrict keyword search to a collection key.")
+    sp.add_argument("--no-autosync", action="store_true",
+                    help="Skip the auto 'update-db' check before semantic queries.")
+    sp.set_defaults(func=cmd_search)
+
+    # update-db
+    up = sub.add_parser("update-db", help="Rebuild the semantic index (delegates to zotero-mcp).")
+    up.add_argument("--fulltext", action="store_true",
+                    help="Include PDF fulltext (slower, better recall).")
+    up.add_argument("--force-rebuild", action="store_true",
+                    help="Nuke and rebuild the index from scratch.")
+    up.set_defaults(func=cmd_update_db)
+
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,26 @@
+survey_id,name_en,host,unit,frequency,coverage,years_or_waves,topics,access,notes
+CFPS,China Family Panel Studies,PKU ISSS,individual+household,biennial,national,2010-2022+,income education health family demography,application/public,Core for family/individual dynamics and inequality studies
+CHFS,China Household Finance Survey,SWUFE,household,biennial-ish,national,2011-2021+,assets debt consumption finance,application/public,Strong for household finance and wealth distribution
+CHNS,China Health and Nutrition Survey,UNC+China CDC,individual+household+community,irregular panel,selected provinces,1989-2018+,nutrition health community environment,public,Not nationally representative; rich community/food environment data
+CHARLS,China Health and Retirement Longitudinal Study,PKU,individual 45+,biennial,national,2011-2020+,aging health cognition retirement,public,Comparable to HRS/ELSA style aging research
+CLHLS,Chinese Longitudinal Healthy Longevity Survey,PKU+DUKE,individual older adults,irregular panel,selected provinces,1998-2018+,longevity health family support,public,Oldest-old focus; survival/health aging research
+CLASS,China Longitudinal Aging Social Survey,RUC,individual 60+,biennial-ish,national,2014-2020+,aging social support wellbeing,application/public,Useful for later-life social outcomes
+CGSS,Chinese General Social Survey,RUC,individual,annual/irregular,national,2003-2021+,attitudes values social stratification,public,China equivalent to GSS; social attitudes
+CSS,Chinese Social Survey,CASS,individual,biannual-ish,national,2006-2021+,social conditions attitudes,application/public,Alternative to CGSS with broader topics
+CEPS,China Education Panel Survey,RUC NSRC,student+parent+school,panel,selected counties,2013-2015+,education outcomes school quality,application/public,Lower secondary education panel data
+CMDS,China Migrants Dynamic Survey,NHC (formerly NHFPC),migrant individual,annual,national,2010-2021+,migration work health family planning,application/public,Large migrant cross-sections
+CLDS,China Labor-force Dynamics Survey,SYSU,individual+household+community,biannual-ish,national,2012-2018+,labor market mobility community,application/public,Good for labor and community effects
+RUMiC,Rural-Urban Migration in China,ANU+partners,individual+household,panel,urban+ rural,2008-2014+,migration labor income,restricted,Targets migrants and comparison households
+CHIP,China Household Income Project,CASS+partners,household,irregular,national,1988-2018+,income distribution inequality,restricted,Often merged with NBS survey frames
+UHS,Urban Household Survey (micro),NBS,household,annual,national,1980s-2010s+,income consumption labor,restricted,Official NBS microdata; access limited
+RHS,Rural Household Survey (micro),NBS,household,annual,national,1980s-2010s+,income agriculture labor,restricted,Official NBS microdata; access limited
+NHSS,National Health Services Survey,NHC,household+individual,5-year,national,1993-2018+,health service utilization health status,restricted,Large health services surveys
+CFES,China Employer-Employee Survey,CAU+partners,firm+worker,irregular,selected provinces,2015-2018+,wages productivity labor relations,restricted,Matched employer-employee data
+CPES,China Private Enterprise Survey,CASS+ACFIC,firm,biannual-ish,national,1993-2018+,private firm finance governance,restricted,Key for private sector dynamics
+WBES,World Bank Enterprise Survey (China),World Bank,firm,irregular,national/urban,2002-2019+,business climate finance productivity,public,Comparable cross-country enterprise data
+ASIF,Annual Survey of Industrial Firms (industrial census sample),NBS,firm,annual,national,1998-2013+,manufacturing productivity ownership,restricted,Administrative microdata; not a survey but widely used
+CHFS-PS,China Household Finance Survey Panel Subsample,SWUFE,household,panel,national,2011-2015+,wealth dynamics,application/public,Panel subset of CHFS
+CHFS-IR,China Household Finance Survey Individual Roster,SWUFE,individual,linked to household,national,2011-2021+,individual demographics labor finance,application/public,Individual-level within CHFS
+CEPS-PS,CEPS Parent Survey,RUC NSRC,parent,linked to CEPS,selected counties,2013-2015+,education investment expectations,application/public,Parent module to CEPS
+CHNS-COMMUNITY,CHNS Community Survey,UNC+China CDC,community,linked to CHNS,selected provinces,1989-2018+,community infrastructure prices,public,Community context for CHNS
+CGSS-FAMILY,CGSS Family Survey,RUC,household,irregular,national,2010-2017+,family structure intergenerational,public,Family modules separate from CGSS core

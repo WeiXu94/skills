@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# nnw-articles: list articles from NetNewsWire as NDJSON.
+#
+# Usage:
+#   nnw-articles [--unread|--starred|--all] [--since-hours N] [--limit N]
+#
+# Defaults: --unread, --since-hours 24, --limit 100
+# Output: one JSON object per line on stdout.
+#
+# Examples:
+#   nnw-articles                           # today's unread (24h)
+#   nnw-articles --since-hours 6 | jq .    # last 6h, pretty
+#   nnw-articles --all --limit 50          # any 50 articles
+
+set -euo pipefail
+
+UNREAD=true
+STARRED=false
+SINCE_HOURS=24
+LIMIT=100
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --unread)        UNREAD=true;  STARRED=false; shift ;;
+    --starred)       UNREAD=false; STARRED=true;  shift ;;
+    --all)           UNREAD=false; STARRED=false; shift ;;
+    --since-hours)   SINCE_HOURS="$2"; shift 2 ;;
+    --limit)         LIMIT="$2"; shift 2 ;;
+    -h|--help)
+      sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec /usr/bin/osascript "$SCRIPT_DIR/list_articles.applescript" \
+  "$UNREAD" "$STARRED" "$SINCE_HOURS" "$LIMIT"

@@ -1,0 +1,2 @@
+- ![image.png](image_1669452179289_0.png)
+- value vs reservation value
