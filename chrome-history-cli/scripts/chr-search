@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# chr-search — search the master HTU TSV with ripgrep, decode timestamps,
+# filter by date range, format human-readable output.
+
+set -euo pipefail
+
+DEFAULT_FILE="${HOME}/Downloads/htu_combined.tsv"
+DEFAULT_INPUT_DIR="${HOME}/Downloads"
+FILE="$DEFAULT_FILE"
+AUTO_MERGE=1
+SINCE=""
+UNTIL=""
+LIMIT=50
+FIELD="all"
+FIXED=0
+PATTERN=""
+IGNORE_CASE=1   # default: case-insensitive
+
+usage() {
+  cat <<'EOF'
+chr-search — search Chrome history (HTU export)
+
+Usage:
+  chr-search [options] <pattern>
+
+Options:
+  --file PATH         master TSV (default ~/Downloads/htu_combined.tsv)
+  --since YYYY-MM-DD  earliest visit date (inclusive)
+  --until YYYY-MM-DD  latest visit date (inclusive)
+  --limit N           cap rows (default 50; 0 = unlimited)
+  --field FIELD       all | url | title (default all)
+  --fixed, -F         literal pattern (no regex)
+  --case-sensitive    case-sensitive match (default is insensitive)
+  --no-auto-merge     skip the pre-search chr-merge (default: auto-merge
+                      runs only when --file is the default master AND
+                      ~/Downloads has pending htu_autobackup_*_incremental.tsv)
+  -h, --help          this help
+
+Output: one tab-separated row per match:
+  YYYY-MM-DD HH:MM<TAB>URL<TAB>TITLE
+
+Newest matches first. Run chr-merge first if the master file is missing.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --file)           FILE="$2"; shift 2 ;;
+    --since)          SINCE="$2"; shift 2 ;;
+    --until)          UNTIL="$2"; shift 2 ;;
+    --limit)          LIMIT="$2"; shift 2 ;;
+    --field)          FIELD="$2"; shift 2 ;;
+    --fixed|-F)       FIXED=1; shift ;;
+    --case-sensitive) IGNORE_CASE=0; shift ;;
+    --no-auto-merge)  AUTO_MERGE=0; shift ;;
+    -h|--help)        usage; exit 0 ;;
+    --) shift; PATTERN="${1:-}"; shift || true; break ;;
+    -*) echo "Unknown flag: $1" >&2; usage >&2; exit 2 ;;
+    *)  PATTERN="$1"; shift ;;
+  esac
+done
+
+if [[ -z "$PATTERN" ]]; then
+  echo "Missing search pattern. See --help." >&2; exit 2
+fi
+
+# Auto-merge: only when using the default master file (we don't want to mutate
+# the default master while the user is querying a custom file). Skip when
+# nothing is pending, so the common case adds zero overhead.
+if (( AUTO_MERGE == 1 )) && [[ "$FILE" == "$DEFAULT_FILE" ]]; then
+  shopt -s nullglob
+  pending=( "$DEFAULT_INPUT_DIR"/htu_autobackup_*_incremental.tsv )
+  shopt -u nullglob
+  if (( ${#pending[@]} > 0 )); then
+    echo "[chr-search] ${#pending[@]} pending incremental backup(s); merging..." >&2
+    "$(dirname "$0")/chr-merge" >&2
+  fi
+fi
+
+if [[ ! -f "$FILE" ]]; then
+  echo "Master file not found: $FILE" >&2
+  echo "Drop an HTU autobackup .tsv into ~/Downloads, then re-run." >&2
+  exit 1
+fi
+case "$FIELD" in all|url|title) ;; *) echo "Bad --field: $FIELD (use all|url|title)" >&2; exit 2 ;; esac
+
+rg_args=( --no-line-number --no-filename )
+(( FIXED == 1 ))       && rg_args+=( -F )
+(( IGNORE_CASE == 1 )) && rg_args+=( -i )
+
+# Hand off date filter, formatting, dedup, limit, and field-filter to python3.
+# Stream lines from ripgrep on stdin.
+rg "${rg_args[@]}" -- "$PATTERN" "$FILE" | SINCE="$SINCE" UNTIL="$UNTIL" \
+  LIMIT="$LIMIT" FIELD="$FIELD" PATTERN="$PATTERN" FIXED="$FIXED" \
+  IGNORE_CASE="$IGNORE_CASE" python3 "$(dirname "$0")/_chr_format.py"

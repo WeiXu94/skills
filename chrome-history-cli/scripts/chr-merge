@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# chr-merge — merge HTU incremental TSV exports into a deduplicated master file.
+#
+# History Trends Unlimited writes a rolling 1-year window into
+# ~/Downloads/htu_autobackup_<date>_incremental.tsv. To preserve history older
+# than 1 year, this script accumulates every visit ever seen into one master
+# file, deduplicating by visit ID (column 2 — globally unique per Chrome visit).
+#
+# After a successful merge, processed files are moved into an archive dir
+# (default <input-dir>/htu_merged/). The empty input dir is then the signal
+# that no merge is pending — chr-search uses it for auto-merge.
+
+set -euo pipefail
+
+INPUT_DIR="${HOME}/Downloads"
+OUT="${HOME}/Downloads/htu_combined.tsv"
+ARCHIVE_DIR=""        # default derived from INPUT_DIR after parsing
+DO_ARCHIVE=1
+
+usage() {
+  cat <<'EOF'
+chr-merge — merge HTU incremental backups into a master TSV
+
+Usage:
+  chr-merge [--input-dir DIR] [--out FILE] [--archive-dir DIR] [--no-archive]
+
+Defaults:
+  --input-dir    ~/Downloads
+  --out          ~/Downloads/htu_combined.tsv
+  --archive-dir  <input-dir>/htu_merged
+
+Picks up htu_autobackup_*_incremental.tsv from the input dir,
+appends them to the master, dedupes by visit ID, preserves first occurrence.
+On success, moves processed files into the archive dir so the next run sees
+an empty input. Idempotent: safe to re-run; skips when nothing pending.
+
+Use --no-archive to leave the input files in place (e.g. for debugging).
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --input-dir)    INPUT_DIR="$2"; shift 2 ;;
+    --out)          OUT="$2"; shift 2 ;;
+    --archive-dir)  ARCHIVE_DIR="$2"; shift 2 ;;
+    --no-archive)   DO_ARCHIVE=0; shift ;;
+    -h|--help)      usage; exit 0 ;;
+    *) echo "Unknown arg: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+[[ -z "$ARCHIVE_DIR" ]] && ARCHIVE_DIR="$INPUT_DIR/htu_merged"
+
+shopt -s nullglob
+files=( "$INPUT_DIR"/htu_autobackup_*_incremental.tsv )
+if (( ${#files[@]} == 0 )); then
+  echo "No HTU incremental files found in $INPUT_DIR (nothing to merge)." >&2
+  exit 0
+fi
+
+before=0
+[[ -f "$OUT" ]] && before=$(wc -l <"$OUT" | tr -d ' ')
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+# Existing master first so its rows win on dedup; then incrementals.
+{ [[ -f "$OUT" ]] && cat "$OUT"; cat "${files[@]}"; } \
+  | awk -F'\t' 'NF>=2 && !seen[$2]++' > "$tmp"
+
+mv "$tmp" "$OUT"
+trap - EXIT
+
+after=$(wc -l <"$OUT" | tr -d ' ')
+added=$(( after - before ))
+
+printf 'Merged %d incremental file(s) → %s\n' "${#files[@]}" "$OUT"
+printf 'Added %d new entries (total %d).\n' "$added" "$after"
+
+if (( DO_ARCHIVE == 1 )); then
+  mkdir -p "$ARCHIVE_DIR"
+  archived=0
+  for src in "${files[@]}"; do
+    dest="$ARCHIVE_DIR/$(basename "$src")"
+    if [[ -e "$dest" ]]; then
+      # Don't clobber an existing archived copy. Suffix with epoch so both
+      # survive — likely a re-export with the same date stamp.
+      dest="$dest.$(date +%s)"
+    fi
+    mv "$src" "$dest"
+    archived=$(( archived + 1 ))
+  done
+  printf 'Archived %d file(s) → %s\n' "$archived" "$ARCHIVE_DIR"
+fi
