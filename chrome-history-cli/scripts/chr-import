@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""One-shot import: external link history into the HTU combined master TSV.
+
+Sources:
+  --xlsx PATH       Pocket/links.xlsx (title, url, time_added, ...)
+  --onetab PATH     OneTab export (URL | title per line, no timestamp)
+  --omnivore DIR    Omnivore export dir with metadata_*.json files
+  --bookmarks PATH  Chrome bookmarks HTML (Netscape format)
+
+Imported entries get synthesized visit IDs: D<epoch-ms>.<seq>
+(D prefix = imported). OneTab entries without timestamps use file mtime.
+Bookmarks use ADD_DATE. URL-deduped against existing master.
+
+Run once — not integrated into chr-search auto-merge.
+"""
+import argparse
+import json
+import os
+import re
+import sys
+import zipfile
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
+
+BM_RE = re.compile(
+    r'<A\s+HREF="([^"]+)"\s+ADD_DATE="(\d+)"[^>]*>([^<]+)</A>', re.IGNORECASE
+)
+ONETAB_RE = re.compile(r'^(https?://\S+?)(?:\s*\|\s*(.*))?$')
+
+XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+
+
+def epoch_sec_to_ms(sec_str: str) -> int:
+    return int(float(sec_str) * 1000)
+
+
+def iso_to_ms(iso_str: str) -> int:
+    dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+    return int(dt.timestamp() * 1000)
+
+
+def make_vid(epoch_ms: int, seq: int) -> str:
+    return f"D{epoch_ms}.{seq}"
+
+
+def parse_xlsx(path: str) -> list[tuple[str, str, str, str]]:
+    rows: list[tuple[str, str, str, str]] = []
+    z = zipfile.ZipFile(path)
+    ss: dict[int, str] = {}
+    try:
+        ss_tree = ET.parse(z.open("xl/sharedStrings.xml"))
+        for i, si in enumerate(ss_tree.findall(f".//{XLSX_NS}si")):
+            t = si.find(f"{XLSX_NS}t")
+            if t is not None and t.text:
+                ss[i] = t.text
+    except KeyError:
+        pass
+    sheet = next(
+        n for n in z.namelist()
+        if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")
+    )
+    tree = ET.parse(z.open(sheet))
+    for xml_row in tree.findall(f".//{XLSX_NS}row")[1:]:
+        cells: dict[str, str] = {}
+        for c in xml_row.findall(f"{XLSX_NS}c"):
+            r = c.get("r", "")
+            col = re.sub(r"\d", "", r)
+            v = c.find(f"{XLSX_NS}v")
+            if v is not None:
+                cells[col] = ss.get(int(v.text), v.text) if c.get("t") == "s" else v.text
+        url = cells.get("B", "")
+        title = cells.get("A", "")
+        time_added = cells.get("C", "")
+        if not url or not time_added:
+            continue
+        try:
+            ms = epoch_sec_to_ms(time_added)
+        except (ValueError, TypeError):
+            continue
+        vid = make_vid(ms, hash(url) % 10000)
+        rows.append((url, vid, "0", title))
+    return rows
+
+
+def parse_onetab(path: str) -> list[tuple[str, str, str, str]]:
+    rows: list[tuple[str, str, str, str]] = []
+    mtime_ms = int(os.path.getmtime(path) * 1000)
+    with open(path, encoding="utf-8") as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            m = ONETAB_RE.match(line)
+            if not m:
+                continue
+            url = m.group(1)
+            title = (m.group(2) or "").strip()
+            ms = mtime_ms - i
+            vid = make_vid(ms, i)
+            rows.append((url, vid, "0", title))
+    return rows
+
+
+def parse_omnivore(dir_path: str) -> list[tuple[str, str, str, str]]:
+    import glob
+    rows: list[tuple[str, str, str, str]] = []
+    for f in sorted(glob.glob(os.path.join(dir_path, "metadata_*.json"))):
+        with open(f, encoding="utf-8") as fh:
+            data = json.load(fh)
+        for item in data:
+            url = item.get("url", "")
+            title = item.get("title", "")
+            saved_at = item.get("savedAt", "")
+            if not url:
+                continue
+            ms = iso_to_ms(saved_at) if saved_at else int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+            vid = make_vid(ms, hash(url) % 10000)
+            rows.append((url, vid, "0", title))
+    return rows
+
+
+def parse_bookmarks(path: str) -> list[tuple[str, str, str, str]]:
+    rows: list[tuple[str, str, str, str]] = []
+    with open(path, encoding="utf-8") as f:
+        for i, m in enumerate(BM_RE.finditer(f.read()), 1):
+            url, add_date, title = m.group(1), m.group(2), m.group(3)
+            try:
+                ms = epoch_sec_to_ms(add_date)
+            except (ValueError, TypeError):
+                continue
+            vid = make_vid(ms, i)
+            rows.append((url, vid, "0", title))
+    return rows
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="One-shot import of external link history into HTU master TSV")
+    parser.add_argument("--xlsx", help="Pocket/links.xlsx path")
+    parser.add_argument("--onetab", action="append", default=[], help="OneTab .txt path (can repeat)")
+    parser.add_argument("--omnivore", help="Omnivore export directory")
+    parser.add_argument("--bookmarks", help="Chrome bookmarks HTML path")
+    parser.add_argument("--out", default=os.path.expanduser("~/Downloads/htu_combined.tsv"), help="Output master TSV")
+    args = parser.parse_args()
+
+    if not any([args.xlsx, args.onetab, args.omnivore, args.bookmarks]):
+        parser.error("At least one import source is required")
+
+    new_rows: list[tuple[str, str, str, str]] = []
+
+    if args.xlsx:
+        n = parse_xlsx(args.xlsx)
+        print(f"Parsed {len(n)} rows from xlsx", file=sys.stderr)
+        new_rows.extend(n)
+
+    for p in args.onetab:
+        n = parse_onetab(p)
+        print(f"Parsed {len(n)} rows from onetab ({os.path.basename(p)})", file=sys.stderr)
+        new_rows.extend(n)
+
+    if args.omnivore:
+        n = parse_omnivore(args.omnivore)
+        print(f"Parsed {len(n)} rows from omnivore", file=sys.stderr)
+        new_rows.extend(n)
+
+    if args.bookmarks:
+        n = parse_bookmarks(args.bookmarks)
+        print(f"Parsed {len(n)} rows from bookmarks", file=sys.stderr)
+        new_rows.extend(n)
+
+    if not new_rows:
+        print("No rows to import.", file=sys.stderr)
+        return 0
+
+    existing_ids: set[str] = set()
+    seen_urls: set[str] = set()
+    existing_count = 0
+    if os.path.isfile(args.out):
+        with open(args.out, encoding="utf-8") as f:
+            for line in f:
+                line = line.rstrip("\n")
+                if not line:
+                    continue
+                existing_count += 1
+                parts = line.split("\t")
+                if len(parts) >= 2:
+                    existing_ids.add(parts[1])
+                if len(parts) >= 4:
+                    seen_urls.add(parts[0])
+
+    added = 0
+    with open(args.out, "a", encoding="utf-8") as f:
+        for url, vid, ttype, title in new_rows:
+            if vid in existing_ids or url in seen_urls:
+                continue
+            title = title.replace("\t", " ").replace("\n", " ")
+            f.write(f"{url}\t{vid}\t{ttype}\t{title}\n")
+            existing_ids.add(vid)
+            seen_urls.add(url)
+            added += 1
+
+    total = existing_count + added
+    print(f"Added {added} new entries (total {total})", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
