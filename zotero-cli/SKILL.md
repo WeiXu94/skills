@@ -1,13 +1,14 @@
 ---
 name: zotero-cli
-description: Search and manage a local Zotero library from the command line via the `zot` CLI. Use this skill whenever the user asks about papers in their Zotero library, wants to find a reference they've saved, searches by author/year/title (keyword) or by topic/concept (semantic), or wants to rebuild the Zotero semantic search index. Trigger this for phrases like "find my paper on X", "what do I have saved about Y", "search Zotero", "Zotero library", "my references on Z", "summarize my paper on W", or when the user mentions a paper they know they've added but doesn't recall the exact title. Also trigger when the user wants to update the Zotero semantic search database.
+description: Search and manage a local Zotero library from the command line via the `zot` CLI. Use this skill whenever the user asks about papers in their Zotero library, wants to find a reference they've saved, searches by author/year/title (keyword) or by topic/concept (semantic), wants to export a paper's BibTeX (by Zotero key or by search), or wants to rebuild the Zotero semantic search index. Trigger this for phrases like "find my paper on X", "what do I have saved about Y", "search Zotero", "Zotero library", "my references on Z", "summarize my paper on W", "get the bibtex for X", "export citation for Y", or when the user mentions a paper they know they've added but doesn't recall the exact title. Also trigger when the user wants to update the Zotero semantic search database.
 ---
 
 # Zotero CLI (`zot`)
 
-A two-command Python CLI over a local Zotero library:
+A three-command Python CLI over a local Zotero library:
 
 - `zot search` — keyword OR semantic search, returns JSON
+- `zot bibtex` — export an item as BibTeX (by Zotero key or search query), via Better BibTeX by default
 - `zot update-db` — rebuild the semantic index (delegates to `zotero-mcp update-db`)
 
 Semantic search reuses the ChromaDB index that `zotero-mcp` already builds at `~/.config/zotero-mcp/chroma_db/`, so results stay consistent with whatever the user has indexed.
@@ -58,6 +59,11 @@ zot search --auto "deep learning for protein folding"
 # Pasted abstract → semantic. Use $(cat -) or shell expansion to pass long text safely.
 zot search -s "$(cat abstract.txt)"
 
+# BibTeX export (Better BibTeX by default; --native for Zotero's built-in)
+zot bibtex ABC123XY                        # direct Zotero key
+zot bibtex "Autor 2013"                    # search query → first hit
+zot bibtex "Autor 2013 China" --native     # multiple-word query, native exporter
+
 # Rebuild index
 zot update-db                              # incremental, metadata only
 zot update-db --fulltext                   # include PDF fulltext (slower, better quality)
@@ -101,8 +107,7 @@ The `key` field is the Zotero item key — keep it; it's needed for any follow-u
 
 **"Find papers similar to this one"** — pull the abstract (search by key, read `abstract`), pipe to `zot search -s`.
 
-**"Export BibTeX for these papers"** — search to get keys, then for each key:
-`curl "http://localhost:23119/api/users/0/items/<KEY>?format=bibtex"`
+**"Export BibTeX for these papers"** — `zot bibtex <KEY|"query">` (Better BibTeX by default; pass `--native` for Zotero's built-in exporter). The argument is a Zotero key (8 uppercase alphanumerics) or a search query; on multiple matches the command prints a disambiguation list to stderr and exits non-zero.
 
 ## Limitations to flag to the user
 
@@ -129,6 +134,7 @@ zot search -s "test" -n 1                    # tests ChromaDB access
 | Var | Default | Use |
 |---|---|---|
 | `ZOTERO_LOCAL_BASE` | `http://localhost:23119/api` | Override if Zotero runs on a non-default port |
+| `ZOTERO_BBT_BASE` | `http://localhost:23119` | Better BibTeX base URL (legacy, no longer used; kept for back-compat) |
 | `ZOTERO_USER_ID` | `0` | Local API uses 0 for all users; only change for unusual setups |
 | `ZOT_AUTOSYNC` | `1` | Set to `0` to disable the auto `update-db` check before semantic queries |
 | `ZOT_SYNC_MARKER` | `~/.config/zotero-mcp/.zot_last_sync` | File where the last-synced `dateAdded` is stored |

@@ -8,15 +8,20 @@
 """
 zot - minimal Zotero CLI
 
-Two commands:
+Commands:
   zot search "query" [--keyword | --semantic | --auto] [-n N] [-t TYPE] [-c COLLECTION]
+  zot bibtex <KEY|"query"> [--native]
   zot update-db [--fulltext] [--force-rebuild]
 
 Keyword search hits Zotero's local HTTP API (localhost:23119).
 Semantic search reuses zotero-mcp's ChromaDB index.
+bibtex exports an item via Better BibTeX (default) or Zotero's native BibTeX
+(--native). The first arg is a Zotero key (8 uppercase alphanumerics) or a
+search query resolved via keyword search.
 update-db delegates to `zotero-mcp update-db` (don't reimplement what's already solid).
 
-All search output is JSON on stdout. Errors and progress on stderr.
+All search output is JSON on stdout. BibTeX output is the raw .bib text on stdout.
+Errors and progress on stderr.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.parse
@@ -32,7 +38,14 @@ from pathlib import Path
 from typing import Any
 
 ZOT_BASE = os.environ.get("ZOTERO_LOCAL_BASE", "http://localhost:23119/api")
+BBT_BASE = os.environ.get("ZOTERO_BBT_BASE", "http://localhost:23119")
 ZOT_USER = os.environ.get("ZOTERO_USER_ID", "0")  # local API: always 0
+ZOTERO_KEY_RE = re.compile(r"^[A-Z0-9]{8}$")
+# BBT translator ID (from Better BibTeX.js's translatorID field). Passed to the
+# Zotero API as ?translator=... so BBT's translator handles the export. If BBT
+# is not installed, Zotero silently falls back to its default BibTeX translator,
+# so this degrades to native output rather than erroring.
+BBT_TRANSLATOR_ID = "ca65189f-8815-4afe-8c8b-8c7c15f0edca"
 ZOT_AUTOSYNC = os.environ.get("ZOT_AUTOSYNC", "1") not in ("0", "false", "False", "no", "")
 ZOT_SYNC_MARKER = Path(
     os.environ.get(
@@ -212,6 +225,85 @@ def semantic_search(query: str, *, limit: int, autosync: bool = True) -> list[di
 
 
 # ---------------------------------------------------------------------------
+# BibTeX export
+# ---------------------------------------------------------------------------
+
+def _resolve_key(arg: str) -> str:
+    """Return a Zotero item key for `arg`.
+
+    If `arg` is a Zotero key (8 uppercase alphanumerics), return as-is.
+    Otherwise run a keyword search; on a single hit return that key,
+    on multiple hits print them to stderr and exit, on zero hits error.
+    """
+    if ZOTERO_KEY_RE.match(arg):
+        return arg
+    hits = keyword_search(arg, limit=5, item_type="-attachment", collection=None)
+    if not hits:
+        die(f"no Zotero items match '{arg}'")
+    if len(hits) == 1:
+        return hits[0]["key"]
+    sys.stderr.write(
+        f"zot: '{arg}' matches {len(hits)} items; rerun with one of these keys:\n"
+    )
+    for h in hits:
+        creators = h.get("creators") or [""]
+        sys.stderr.write(
+            f"  {h.get('key','')}  {h.get('date','')}  {creators[0]}  {h.get('title','')}\n"
+        )
+    sys.exit(1)
+
+
+_STRIP_FIELDS_RE = re.compile(
+    r",\s*(?:abstract|file)\s*=\s*\{.*?\}",
+    re.DOTALL,
+)
+# Matches a comma at the end of the entry body, right before the closing `}`.
+_TRAILING_COMMA_RE = re.compile(r",(\s*\})")
+
+
+def strip_bibtex_fields(text: str) -> str:
+    """Drop noisy fields (`abstract`, `file`) from a .bib string.
+
+    Keeps the leading comma of the removed field so the previous field still
+    has a separator; cleans up any trailing comma left before the closing `}`.
+    Assumes field values don't contain unescaped `}` (true for Zotero exports).
+    """
+    text = _STRIP_FIELDS_RE.sub("", text)
+    text = _TRAILING_COMMA_RE.sub(r"\1", text)
+    return text
+
+
+def bbt_export_bibtex(key: str) -> str:
+    # Invoke the Better BibTeX translator via Zotero's export API. If BBT isn't
+    # installed Zotero falls back to its default BibTeX translator and returns
+    # the same output as native_export_bibtex.
+    url = (
+        f"{ZOT_BASE}/users/{ZOT_USER}/items/{key}"
+        f"?format=bibtex&translator={BBT_TRANSLATOR_ID}"
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            return resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:300]
+        die(f"Better BibTeX export failed for {key} (HTTP {e.code}): {body}")
+    except urllib.error.URLError as e:
+        die(f"cannot reach Zotero local API at {ZOT_BASE} ({e.reason})")
+
+
+def native_export_bibtex(key: str) -> str:
+    url = f"{ZOT_BASE}/users/{ZOT_USER}/items/{key}?format=bibtex"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            return resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:300]
+        die(f"Zotero BibTeX export failed for {key} (HTTP {e.code}): {body}")
+    except urllib.error.URLError as e:
+        die(f"cannot reach Zotero local API at {ZOT_BASE} ({e.reason})")
+
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
@@ -250,6 +342,20 @@ def cmd_search(args: argparse.Namespace) -> int:
 
     json.dump(out, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
+    return 0
+
+
+def cmd_bibtex(args: argparse.Namespace) -> int:
+    query = " ".join(args.query).strip()
+    if not query:
+        die("bibtex needs a key or search query. Try: zot bibtex --help")
+    key = _resolve_key(query)
+    text = native_export_bibtex(key) if args.native else bbt_export_bibtex(key)
+    if not args.full:
+        text = strip_bibtex_fields(text)
+    sys.stdout.write(text)
+    if not text.endswith("\n"):
+        sys.stdout.write("\n")
     return 0
 
 
@@ -306,6 +412,25 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--no-autosync", action="store_true",
                     help="Skip the auto 'update-db' check before semantic queries.")
     sp.set_defaults(func=cmd_search)
+
+    # bibtex
+    bp = sub.add_parser(
+        "bibtex",
+        help="Export an item as BibTeX. Accepts a Zotero key or a search query.",
+    )
+    bp.add_argument(
+        "query", nargs="+",
+        help="Zotero item key (8 uppercase alphanumerics) or search query (e.g. 'Autor 2013').",
+    )
+    bp.add_argument(
+        "--native", action="store_true",
+        help="Use Zotero's built-in BibTeX exporter instead of Better BibTeX (default: BBT).",
+    )
+    bp.add_argument(
+        "--full", action="store_true",
+        help="Keep `abstract` and `file` fields (default: stripped).",
+    )
+    bp.set_defaults(func=cmd_bibtex)
 
     # update-db
     up = sub.add_parser("update-db", help="Rebuild the semantic index (delegates to zotero-mcp).")
