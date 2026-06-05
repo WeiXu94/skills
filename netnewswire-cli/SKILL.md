@@ -92,7 +92,7 @@ nnw-articles --unread --since-hours 24 \
 
 ### 6. Token-efficient last-day digest (preferred when *you* are the LLM)
 
-Use this when *you* are the model summarizing. Reading every body burns tokens for little gain — most days have 10–50 articles, mostly link roundups and short commentary that the metadata already captures.
+Follow this procedure strictly when *you* are asked for a summary of last day's unread articles. Reading every body burns tokens for little gain — most days have 10–50 articles, mostly link roundups and short commentary that the metadata already captures. DO remember to use pandoc for HTML → plain text conversion whenever possible (especially for the full-body reads), 
 
 1. **List metadata.**
    ```bash
@@ -127,9 +127,9 @@ Use this when *you* are the model summarizing. Reading every body burns tokens f
 
 **Token budget:** a fully-read post ≈ 3k–8k tokens; a metadata-only entry ≈ 50 tokens. Reading 5 of 30 articles fully ≈ 25–40k vs all 30 ≈ 150k+. Always triage.
 
-**Output shape:**
+**Output shape:** STRICTLY follow this format for the final output, so the user gets a consistent experience and can easily skim for high-signal articles. 
+
 ```markdown
-# Daily digest — <date range>
 N unread articles fetched.
 
 ## <Topic A>
