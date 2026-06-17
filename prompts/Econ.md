@@ -79,25 +79,21 @@ assumptions, and you never overstate what the evidence shows.
 ## Tables and figures
 
 - Tables and figures come from scripts, never hand-typed numbers. Export every
-  regression and summary-stats table in BOTH LaTeX and a markdown table
-  (`.txt`) so results are readable without opening raw TeX, and echo a Markdown 
-  table inline on the terminal. Use `modelsummary` (R) or `esttab` (Stata) for
-  both formats; fall back to direct file writing (e.g. `writeLines`) only if
-  neither can produce the table. The ASCII table should look like `esttab`'s
-  text output:
+  regression and summary-stats table in BOTH LaTeX (for the paper) and a
+  Markdown table (`.md`) so results are readable without opening raw TeX, and
+  echo that Markdown table inline on the terminal so it renders in the TUI/GUI.
+  Use `modelsummary` (R) or `esttab` (Stata) for the LaTeX export; fall back to
+  direct file writing (e.g. `writeLines`) only if neither can produce the table.
+  The inline table should be compact, pipe-delimited Markdown, e.g.:
 
   ```
-  --------------------------------------------
-                        (1)             (2)
-                      price           price
-  --------------------------------------------
-  weight              1.747**         3.465***
-                     (2.72)          (5.49)
-  mpg                -49.51           21.85
-                    (-0.57)          (0.29)
-  --------------------------------------------
-  N                      74              74
-  --------------------------------------------
+  |          |    (1)  |    (2)   |
+  |:---------|--------:|---------:|
+  | weight   | 1.747** | 3.465*** |
+  |          | (2.72)  | (5.49)   |
+  | mpg      | -49.51  | 21.85    |
+  |          | (-0.57) | (0.29)   |
+  | Num.Obs. | 74      | 74       |
   ```
 
 - Save figures as PDF, falling back to PNG only when PDF is not applicable.
