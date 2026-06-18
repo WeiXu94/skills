@@ -1,9 +1,13 @@
 # skills
 
-A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Two flavors:
+A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized by source: my own skills live in `mine/`; skills vendored from other authors live one folder per source (`mattpocock/`, `waza/`, `baoyu/`), kept in sync from upstream.
+
+My own skills come in two flavors:
 
 - **Econ research skills** — domain knowledge, workflows, and references for economics work (paper writing, model estimation, literature review, micro-survey catalogs, ideation).
 - **CLI tool skills** — small command-line wrappers the agent can invoke directly, instead of running a long-lived MCP server.
+
+Vendored skills are writing, design, research, and engineering workflows — see [Vendored upstream skills](#vendored-upstream-skills).
 
 ## Philosophy: CLI over MCP
 
@@ -32,20 +36,36 @@ Inspired by [Mario Zechner](https://github.com/badlogic): give the agent a thin 
 | [netnewswire-cli](mine/netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
 | [zotero-cli](mine/zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
 
-### Upstream pi-skills
+### Vendored upstream skills
 
-Pulled in (or symlinked) from [badlogic/pi-skills](https://github.com/badlogic/pi-skills):
+Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them.
+
+From [mattpocock/skills](https://github.com/mattpocock/skills):
 
 | Skill | Description |
 |-------|-------------|
-| [brave-search](brave-search/SKILL.md) | Web search and content extraction via Brave Search. |
-| [browser-tools](browser-tools/SKILL.md) | Interactive browser automation via Chrome DevTools Protocol. |
-| [gccli](gccli/SKILL.md) | Google Calendar CLI for events and availability. |
-| [gdcli](gdcli/SKILL.md) | Google Drive CLI for file management and sharing. |
-| [gmcli](gmcli/SKILL.md) | Gmail CLI for email, drafts, and labels. |
-| [transcribe](transcribe/SKILL.md) | Speech-to-text via Groq Whisper API. |
-| [vscode](vscode/SKILL.md) | VS Code integration for diffs and file comparison. |
-| [youtube-transcript](youtube-transcript/SKILL.md) | Fetch YouTube video transcripts. |
+| [writing-fragments](mattpocock/writing-fragments/SKILL.md) | Grill the user for heterogeneous writing fragments, appended to one doc as raw material for a later article. |
+| [writing-shape](mattpocock/writing-shape/SKILL.md) | Shape a pile of raw material into an article — candidate openings, grow paragraph by paragraph, argue the format. |
+| [writing-beats](mattpocock/writing-beats/SKILL.md) | Assemble raw material as a narrative journey of beats, choose-your-own-adventure style. |
+| [writing-great-skills](mattpocock/writing-great-skills/SKILL.md) | Vocabulary and principles for writing predictable, well-formed skills. |
+| [decision-mapping](mattpocock/decision-mapping/SKILL.md) | Turn a loose idea into a sequenced map of investigation tickets, driven to resolution one at a time. |
+| [codebase-design](mattpocock/codebase-design/SKILL.md) | Shared vocabulary for designing deep modules — interfaces, seams, testability. |
+| [improve-codebase-architecture](mattpocock/improve-codebase-architecture/SKILL.md) | Scan a codebase for deepening opportunities, present as an HTML report, then grill the chosen one. |
+| [diagnosing-bugs](mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
+
+From [tw93/Waza](https://github.com/tw93/Waza) (renamed `waza-*` for provenance):
+
+| Skill | Description |
+|-------|-------------|
+| [waza-learn](waza/waza-learn/SKILL.md) | Six-phase research workflow turning unfamiliar domains or source bundles into publish-ready output. |
+| [waza-design](waza/waza-design/SKILL.md) | Distinctive, production-grade UI for pages, components, typography, and screenshot-driven polish. |
+| [waza-read](waza/waza-read/SKILL.md) | Fetch and summarize URLs/PDFs, or convert them to clean Markdown for downstream work. |
+
+From [JimLiu/baoyu-skills](https://github.com/JimLiu/baoyu-skills):
+
+| Skill | Description |
+|-------|-------------|
+| [baoyu-diagram](baoyu/baoyu-diagram/SKILL.md) | Create dark-themed SVG diagrams of any type — architecture, flowchart, sequence, mind map, timeline. |
 
 ### Misc
 
@@ -53,23 +73,22 @@ Pulled in (or symlinked) from [badlogic/pi-skills](https://github.com/badlogic/p
 |-------|-------------|
 | [karpathy-guidelines](mine/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes. |
 
-## Installing as Claude Code skills
+## Installing into a project
 
-Claude Code only looks one level deep for `SKILL.md`, so each skill folder must sit directly under the skills directory. Symlink the ones you want:
+Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `add-skill` zsh function (in `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically, and the link name stays bare so it's discoverable:
 
 ```bash
-# User-level
-mkdir -p ~/.claude/skills
-for s in netnewswire-cli zotero-cli econ-paper-writing lit-review-assistant \
-         research-ideation china-micro-surveys economics-model \
-         matlab-econ-model-estimator karpathy-guidelines \
-         brave-search browser-tools gccli gdcli gmcli \
-         transcribe vscode youtube-transcript; do
-  ln -s "$(pwd)/$s" "$HOME/.claude/skills/$s"
-done
+add-skill econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
+add-skill writing-shape claude         # single agent
+add-skill waza-design claude codex pi  # multiple agents at once
 ```
 
-Or copy individual folders into `~/.claude/skills/` if you prefer not to symlink.
+Or symlink manually — point at the skill's real `<group>/<name>` path but keep the link name bare:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s ~/skills/mattpocock/writing-shape ~/.claude/skills/writing-shape
+```
 
 ## Skill format
 
@@ -92,11 +111,7 @@ Helper scripts live alongside `SKILL.md` (e.g. `scripts/`, `references/`).
 Per-skill setup notes:
 
 - **netnewswire-cli** — macOS + NetNewsWire installed; uses AppleScript + bash, no extra deps.
-- **zotero-cli** — Python 3.10+, `zotero-mcp-server` installed in the same interpreter, Zotero desktop running with the local API enabled. See [`zotero-cli/README.md`](zotero-cli/README.md) for setup.
-- **brave-search**, **browser-tools**, **youtube-transcript** — Node.js + `npm install` in the skill directory.
-- **gccli / gdcli / gmcli** — `npm install -g @mariozechner/{gccli,gdcli,gmcli}`.
-- **transcribe** — `curl` + a Groq API key.
-- **vscode** — VS Code with the `code` CLI on PATH.
+- **zotero-cli** — Python 3.10+, `zotero-mcp-server` installed in the same interpreter, Zotero desktop running with the local API enabled. See [`mine/zotero-cli/README.md`](mine/zotero-cli/README.md) for setup.
 - **matlab-econ-model-estimator** — MATLAB.
 
 ## Credits
