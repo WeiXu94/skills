@@ -18,19 +18,19 @@ Inspired by [Mario Zechner](https://github.com/badlogic): give the agent a thin 
 
 | Skill | Description |
 |-------|-------------|
-| [china-micro-surveys](china-micro-surveys/SKILL.md) | Catalog and metadata for Chinese micro survey datasets (CFPS, CHFS, CHARLS, etc.). |
-| [econ-paper-writing](econ-paper-writing/SKILL.md) | Section-by-section guidance for drafting/polishing economics papers. |
-| [economics-model](economics-model/SKILL.md) | Reference notes on widely used economic models. |
-| [lit-review-assistant](lit-review-assistant/SKILL.md) | Templates for structuring literature reviews and finding gaps. |
-| [matlab-econ-model-estimator](matlab-econ-model-estimator/SKILL.md) | Parameter estimation for econ models in MATLAB. |
-| [research-ideation](research-ideation/SKILL.md) | Frameworks for going from phenomena to testable hypotheses. |
+| [china-micro-surveys](mine/china-micro-surveys/SKILL.md) | Catalog and metadata for Chinese micro survey datasets (CFPS, CHFS, CHARLS, etc.). |
+| [econ-paper-writing](mine/econ-paper-writing/SKILL.md) | Section-by-section guidance for drafting/polishing economics papers. |
+| [economics-model](mine/economics-model/SKILL.md) | Reference notes on widely used economic models. |
+| [lit-review-assistant](mine/lit-review-assistant/SKILL.md) | Templates for structuring literature reviews and finding gaps. |
+| [matlab-econ-model-estimator](mine/matlab-econ-model-estimator/SKILL.md) | Parameter estimation for econ models in MATLAB. |
+| [research-ideation](mine/research-ideation/SKILL.md) | Frameworks for going from phenomena to testable hypotheses. |
 
 ### Custom CLI tools (mine)
 
 | Skill | Description |
 |-------|-------------|
-| [netnewswire-cli](netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
-| [zotero-cli](zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
+| [netnewswire-cli](mine/netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
+| [zotero-cli](mine/zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
 
 ### Upstream pi-skills
 
@@ -51,7 +51,7 @@ Pulled in (or symlinked) from [badlogic/pi-skills](https://github.com/badlogic/p
 
 | Skill | Description |
 |-------|-------------|
-| [karpathy-guidelines](karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes. |
+| [karpathy-guidelines](mine/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes. |
 
 ## Installing as Claude Code skills
 

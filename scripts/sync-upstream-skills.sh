@@ -4,9 +4,10 @@
 #
 # Reads the data file `upstream-manifest` at the repo root, keeps a slim
 # mirror of each upstream repo (partial + sparse checkout, so ONLY the listed
-# folders are downloaded — not the whole repo), and copies them, flat, into this
-# repo. After each copy it rewrites the skill's SKILL.md `name:` field to match
-# the destination folder, so renamed skills stay valid AND re-syncable.
+# folders are downloaded — not the whole repo), and copies each into a per-
+# upstream folder `<repo-key>/<dest>/` in this repo. After each copy it rewrites
+# the skill's SKILL.md `name:` to match <dest> (its immediate parent dir), so
+# renamed skills stay valid AND re-syncable.
 #
 # Usage:
 #   scripts/sync-upstream-skills.sh            # sync; then review with git status
@@ -72,17 +73,20 @@ for entry in "${SKILLS[@]}"; do
     echo "!!  [$key] upstream path not found, skipping: $src"
     continue
   fi
-  echo "    [$key] $src -> $dst/"
-  rsync -a --delete --exclude '.git' "$mirror/$src/" "$REPO_ROOT/$dst/"
+  echo "    [$key] $src -> $key/$dst/"
+  mkdir -p "$REPO_ROOT/$key"
+  rsync -a --delete --exclude '.git' "$mirror/$src/" "$REPO_ROOT/$key/$dst/"
 
-  # Make the skill valid even if renamed: name: must equal the dest folder.
-  skillmd="$REPO_ROOT/$dst/SKILL.md"
+  # Make the skill valid even if renamed: name: must equal its dest folder
+  # (the immediate parent dir, which is $dst — the upstream <key> level does
+  # not affect the skill name).
+  skillmd="$REPO_ROOT/$key/$dst/SKILL.md"
   if [ -f "$skillmd" ]; then
     tmp="$(mktemp)"
     sed '1,/^name:/ s/^name:.*/name: '"$dst"'/' "$skillmd" > "$tmp" && mv "$tmp" "$skillmd"
   fi
 
-  [ "$STAGE" = 1 ] && git -C "$REPO_ROOT" add "$dst"
+  [ "$STAGE" = 1 ] && git -C "$REPO_ROOT" add "$key/$dst"
 done
 
 echo "==> Done.${STAGE:+}"
