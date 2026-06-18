@@ -23,9 +23,8 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 - Add/remove a skill or source: edit `upstream-manifest`, not the script.
 - Sync rewrites each copied `SKILL.md` `name:` to match its dest dir, so you may
   rename freely (e.g. `learn` -> `waza-learn`).
-- Don't hand-edit a vendored skill dir; the next sync overwrites it.
-- To customize a vendored skill, put a unified diff at `patches/<name>.patch`;
-  sync re-applies it after the copy (see `patches/handoff.patch`).
+- Don't hand-edit a vendored skill dir; the next sync overwrites it. To
+  customize one, fork it into `mine/` (it then stops tracking upstream).
 
 ## Hook
 

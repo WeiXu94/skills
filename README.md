@@ -38,7 +38,7 @@ Inspired by [Mario Zechner](https://github.com/badlogic): give the agent a thin 
 
 ### Vendored upstream skills
 
-Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them. To customize one, drop a unified diff at `patches/<name>.patch`; sync re-applies it after each refresh (e.g. the local tweak to `handoff` lives in [`patches/handoff.patch`](patches/handoff.patch)).
+Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them. To customize one, fork it into `mine/` (it then stops tracking upstream); see [handoff](#misc-mine).
 
 From [mattpocock/skills](https://github.com/mattpocock/skills):
 
@@ -55,7 +55,6 @@ From [mattpocock/skills](https://github.com/mattpocock/skills):
 | [grill-me](mattpocock/grill-me/SKILL.md) | A relentless interview to sharpen a plan or design. |
 | [grilling](mattpocock/grilling/SKILL.md) | The underlying relentless-interview technique that grill-me/grill-with-docs build on. |
 | [grill-with-docs](mattpocock/grill-with-docs/SKILL.md) | Like grill-me, but also writes ADRs + a glossary as decisions crystallize. |
-| [handoff](mattpocock/handoff/SKILL.md) | Compact the conversation into a handoff doc for a fresh agent. Locally patched ([`patches/handoff.patch`](patches/handoff.patch)) to save under `./docs/`. |
 | [setup-matt-pocock-skills](mattpocock/setup-matt-pocock-skills/SKILL.md) | Configure a repo for the engineering skills — issue tracker, triage labels, domain doc layout. Run once. |
 
 From [tw93/Waza](https://github.com/tw93/Waza) (renamed `waza-*` for provenance):
@@ -90,6 +89,7 @@ Workflow skills I keep and tweak (not vendored — safe to edit):
 
 | Skill | Description |
 |-------|-------------|
+| [handoff](mine/handoff/SKILL.md) | Compact the conversation into a handoff doc for a fresh agent. Forked from [mattpocock's](https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff), tweaked to save under `./docs/<timestamp>-handoff-<topic>.md`. Not synced — refresh by hand if upstream changes. |
 | [record-as-implement](mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
 
 ## Installing into a project

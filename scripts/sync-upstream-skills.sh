@@ -7,8 +7,7 @@
 # folders are downloaded — not the whole repo), and copies each into a per-
 # upstream folder `<repo-key>/<dest>/` in this repo. After each copy it rewrites
 # the skill's SKILL.md `name:` to match <dest> (its immediate parent dir), so
-# renamed skills stay valid AND re-syncable. If `patches/<dest>.patch` exists it
-# is applied after the copy, so local tweaks to a vendored skill survive refreshes.
+# renamed skills stay valid AND re-syncable.
 #
 # Usage:
 #   scripts/sync-upstream-skills.sh            # sync; then review with git status
@@ -85,19 +84,6 @@ for entry in "${SKILLS[@]}"; do
   if [ -f "$skillmd" ]; then
     tmp="$(mktemp)"
     sed '1,/^name:/ s/^name:.*/name: '"$dst"'/' "$skillmd" > "$tmp" && mv "$tmp" "$skillmd"
-  fi
-
-  # Re-apply local tweaks so customizations survive upstream refreshes. A unified
-  # diff at patches/<dst>.patch (paths relative to the skill dir) is applied after
-  # the pristine copy. rsync --delete above resets to upstream first, so this is a
-  # clean single apply each run; failure means upstream drifted — regenerate it.
-  patchfile="$REPO_ROOT/patches/$dst.patch"
-  if [ -f "$patchfile" ]; then
-    if git -C "$REPO_ROOT/$key/$dst" apply "$patchfile" 2>/dev/null; then
-      echo "    [$key] applied local patch: patches/$dst.patch"
-    else
-      echo "!!  [$key] local patch did NOT apply (upstream drift?): patches/$dst.patch" >&2
-    fi
   fi
 
   [ "$STAGE" = 1 ] && git -C "$REPO_ROOT" add "$key/$dst"
