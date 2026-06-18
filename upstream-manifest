@@ -5,13 +5,15 @@
 #   skill <repo-key>   <path/inside/upstream/repo>   <dest-folder-in-this-repo>
 #
 # The sync script downloads ONLY the listed folders (partial + sparse checkout)
-# and copies them flat into this repo. After each copy it rewrites the skill's
+# and copies each into a per-source folder `<repo-key>/<dest>/`. After each copy
+# it rewrites the skill's
 # SKILL.md `name:` field to match <dest-folder>, so you may rename freely (e.g.
 # learn -> waza-learn) and the skill stays valid AND re-syncable.
 
 repo  mattpocock  https://github.com/mattpocock/skills.git
 repo  waza        https://github.com/tw93/Waza.git
 repo  baoyu       https://github.com/JimLiu/baoyu-skills.git
+repo  karpathy    https://github.com/multica-ai/andrej-karpathy-skills.git
 
 skill mattpocock  skills/in-progress/writing-beats                  writing-beats
 skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
@@ -21,7 +23,10 @@ skill mattpocock  skills/productivity/writing-great-skills          writing-grea
 skill mattpocock  skills/in-progress/decision-mapping               decision-mapping
 skill mattpocock  skills/in-progress/writing-fragments              writing-fragments
 skill mattpocock  skills/in-progress/writing-shape                  writing-shape
+skill mattpocock  skills/productivity/grill-me                      grill-me
+skill mattpocock  skills/engineering/grill-with-docs                grill-with-docs
 skill waza        skills/learn                                      waza-learn
 skill waza        skills/design                                     waza-design
 skill waza        skills/read                                       waza-read
 skill baoyu       skills/baoyu-diagram                              baoyu-diagram
+skill karpathy    skills/karpathy-guidelines                        karpathy-guidelines

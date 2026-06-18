@@ -1,6 +1,6 @@
 # skills
 
-A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized by source: my own skills live in `mine/`; skills vendored from other authors live one folder per source (`mattpocock/`, `waza/`, `baoyu/`), kept in sync from upstream.
+A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized by source: my own skills live in `mine/`; skills vendored from other authors live one folder per source (`mattpocock/`, `waza/`, `baoyu/`, `karpathy/`), kept in sync from upstream.
 
 My own skills come in two flavors:
 
@@ -52,6 +52,8 @@ From [mattpocock/skills](https://github.com/mattpocock/skills):
 | [codebase-design](mattpocock/codebase-design/SKILL.md) | Shared vocabulary for designing deep modules — interfaces, seams, testability. |
 | [improve-codebase-architecture](mattpocock/improve-codebase-architecture/SKILL.md) | Scan a codebase for deepening opportunities, present as an HTML report, then grill the chosen one. |
 | [diagnosing-bugs](mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
+| [grill-me](mattpocock/grill-me/SKILL.md) | A relentless interview to sharpen a plan or design. |
+| [grill-with-docs](mattpocock/grill-with-docs/SKILL.md) | Like grill-me, but also writes ADRs + a glossary as decisions crystallize. |
 
 From [tw93/Waza](https://github.com/tw93/Waza) (renamed `waza-*` for provenance):
 
@@ -67,11 +69,20 @@ From [JimLiu/baoyu-skills](https://github.com/JimLiu/baoyu-skills):
 |-------|-------------|
 | [baoyu-diagram](baoyu/baoyu-diagram/SKILL.md) | Create dark-themed SVG diagrams of any type — architecture, flowchart, sequence, mind map, timeline. |
 
-### Misc
+From [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills):
 
 | Skill | Description |
 |-------|-------------|
-| [karpathy-guidelines](mine/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes. |
+| [karpathy-guidelines](karpathy/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes — surgical changes, surfaced assumptions, verifiable success criteria. |
+
+### Misc (mine)
+
+Workflow skills I keep and tweak (not vendored — safe to edit):
+
+| Skill | Description |
+|-------|-------------|
+| [handoff](mine/handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. (Tweaked from mattpocock's.) |
+| [record-as-implement](mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
 
 ## Installing into a project
 
@@ -81,6 +92,12 @@ Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `
 add-skill econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
 add-skill writing-shape claude         # single agent
 add-skill waza-design claude codex pi  # multiple agents at once
+```
+
+Add `-g`/`--global` to link into your user-level dirs (`~/.claude/skills`, `~/.agents/skills`) instead of the current project:
+
+```bash
+add-skill -g writing-shape claude codex   # user-level, both agents
 ```
 
 Or symlink manually — point at the skill's real `<group>/<name>` path but keep the link name bare:
