@@ -1,67 +1,88 @@
 #!/usr/bin/env bash
 #
-# sync-upstream-skills.sh — vendor selected skills from an upstream repo.
+# sync-upstream-skills.sh — vendor selected skills from upstream repos.
 #
-# Keeps a slim mirror of an upstream skills repo (partial + sparse checkout, so
-# ONLY the folders listed below are ever downloaded — not the whole repo) and
-# copies them, flat, into this repo. Re-run any time to pull upstream updates.
+# Keeps a slim mirror of each upstream repo (partial + sparse checkout, so ONLY
+# the folders listed below are ever downloaded — not the whole repo) and copies
+# them, flat, into this repo. Re-run any time to pull upstream updates.
 #
 # Usage:
 #   scripts/sync-upstream-skills.sh           # sync everything in SKILLS
 #   git status                                # review what changed, then commit
 #
 # To track another skill: add a line to SKILLS as
-#   "<path/inside/upstream/repo>:<dest-folder-name-in-this-repo>"
-# and re-run.
+#   "<repo-key> <path/inside/upstream/repo> <dest-folder-name-in-this-repo>"
+# (the repo-key must exist in REPOS). To add a new source, add a REPOS line.
 
 set -euo pipefail
 
-# --- config -----------------------------------------------------------------
-UPSTREAM_REPO="https://github.com/mattpocock/skills.git"
-MIRROR="${UPSTREAM_SKILLS_MIRROR:-$HOME/.cache/upstream-skills/mattpocock-skills}"
+CACHE_ROOT="${UPSTREAM_SKILLS_CACHE:-$HOME/.cache/upstream-skills}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Skills to vendor:  "<upstream/path>:<dest-folder-in-this-repo>"
+# --- config -----------------------------------------------------------------
+
+# Upstream sources:  "<repo-key> <git-url>"
+REPOS=(
+  "mattpocock https://github.com/mattpocock/skills.git"
+  "waza       https://github.com/tw93/Waza.git"
+)
+
+# Skills to vendor:  "<repo-key> <upstream/path> <dest-folder-in-this-repo>"
 SKILLS=(
-  "skills/in-progress/writing-beats:writing-beats"
+  "mattpocock skills/in-progress/writing-beats                 writing-beats"
+  "mattpocock skills/engineering/improve-codebase-architecture improve-codebase-architecture"
+  "mattpocock skills/engineering/diagnosing-bugs               diagnosing-bugs"
+  "mattpocock skills/engineering/codebase-design               codebase-design"
+  "mattpocock skills/productivity/writing-great-skills         writing-great-skills"
+  "mattpocock skills/in-progress/decision-mapping              decision-mapping"
+  "mattpocock skills/in-progress/writing-fragments             writing-fragments"
+  "mattpocock skills/in-progress/writing-shape                 writing-shape"
+  "waza       skills/learn                                     learn"
+  "waza       skills/design                                    design"
+  "waza       skills/read                                      read"
 )
 # ---------------------------------------------------------------------------
 
-# Upstream sparse paths derived from the SKILLS list.
-sparse_paths=()
-for entry in "${SKILLS[@]}"; do
-  sparse_paths+=("${entry%%:*}")
+# 1. Per repo: create/refresh a slim mirror restricted to the wanted paths.
+for repo in "${REPOS[@]}"; do
+  read -r key url <<<"$repo"
+  mirror="$CACHE_ROOT/$key"
+
+  # Gather this repo's sparse paths from the SKILLS list.
+  paths=()
+  for entry in "${SKILLS[@]}"; do
+    read -r ekey src _dst <<<"$entry"
+    [ "$ekey" = "$key" ] && paths+=("$src")
+  done
+  [ ${#paths[@]} -eq 0 ] && continue
+
+  if [ ! -d "$mirror/.git" ]; then
+    echo "==> [$key] creating slim mirror at $mirror"
+    mkdir -p "$CACHE_ROOT"
+    git clone --filter=blob:none --no-checkout --depth 1 "$url" "$mirror"
+    git -C "$mirror" sparse-checkout init --cone
+  fi
+
+  echo "==> [$key] sparse paths: ${paths[*]}"
+  git -C "$mirror" sparse-checkout set "${paths[@]}"
+
+  branch="$(git -C "$mirror" remote show origin | sed -n 's/.*HEAD branch: //p')"
+  echo "==> [$key] fetching $branch"
+  git -C "$mirror" fetch --depth 1 origin "$branch"
+  git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
 done
 
-# 1. Create the slim mirror on first run (partial clone, no blobs yet, shallow).
-if [ ! -d "$MIRROR/.git" ]; then
-  echo "==> Creating slim mirror at $MIRROR"
-  mkdir -p "$(dirname "$MIRROR")"
-  git clone --filter=blob:none --no-checkout --depth 1 "$UPSTREAM_REPO" "$MIRROR"
-  git -C "$MIRROR" sparse-checkout init --cone
-fi
-
-# 2. Restrict the mirror to just the folders we want (only these get fetched).
-echo "==> Sparse paths: ${sparse_paths[*]}"
-git -C "$MIRROR" sparse-checkout set "${sparse_paths[@]}"
-
-# 3. Pull the latest upstream tip for the default branch.
-default_branch="$(git -C "$MIRROR" remote show origin | sed -n 's/.*HEAD branch: //p')"
-echo "==> Fetching ${default_branch}"
-git -C "$MIRROR" fetch --depth 1 origin "$default_branch"
-git -C "$MIRROR" checkout -B "$default_branch" "origin/$default_branch" >/dev/null 2>&1
-
-# 4. Copy each selected skill, flat, into this repo (mirror = source of truth).
+# 2. Copy each selected skill, flat, into this repo (mirror = source of truth).
 echo "==> Copying into $REPO_ROOT"
 for entry in "${SKILLS[@]}"; do
-  src="${entry%%:*}"
-  dst="${entry##*:}"
-  if [ ! -d "$MIRROR/$src" ]; then
-    echo "!!  upstream path not found, skipping: $src"
+  read -r key src dst <<<"$entry"
+  mirror="$CACHE_ROOT/$key"
+  if [ ! -d "$mirror/$src" ]; then
+    echo "!!  [$key] upstream path not found, skipping: $src"
     continue
   fi
-  echo "    $src -> $dst/"
-  rsync -a --delete --exclude '.git' "$MIRROR/$src/" "$REPO_ROOT/$dst/"
+  echo "    [$key] $src -> $dst/"
+  rsync -a --delete --exclude '.git' "$mirror/$src/" "$REPO_ROOT/$dst/"
 done
 
 echo "==> Done. Review with:  git -C \"$REPO_ROOT\" status"
