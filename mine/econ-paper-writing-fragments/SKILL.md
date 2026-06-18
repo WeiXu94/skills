@@ -1,5 +1,5 @@
 ---
-name: econ-paper-materials
+name: econ-paper-writing-fragments
 description: Inventory scattered econ-paper materials — tables, figures, data, model, literature, code — into one evidence pile, each exhibit with its takeaway, ready to draft from. Pairs with econ-paper-writing-shape.
 disable-model-invocation: true
 ---

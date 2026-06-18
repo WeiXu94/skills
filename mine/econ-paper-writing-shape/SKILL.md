@@ -1,6 +1,6 @@
 ---
 name: econ-paper-writing-shape
-description: Draft an econ paper section by section into sections/*.tex — fixed skeleton, grow each section from the materials pile, argue the LaTeX format, grill weak prose. Pairs with econ-paper-materials.
+description: Draft an econ paper section by section into sections/*.tex — fixed skeleton, grow each section from the materials pile, argue the LaTeX format, grill weak prose. Pairs with econ-paper-writing-fragments.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ Shape an economics paper from raw material into LaTeX, **one section per file**
 under `sections/`, so each part stays small enough to edit and refine alone. The
 macro-structure is a fixed **skeleton** (econ papers don't discover their shape) —
 your job is to grow each section, pulling from the **quarry**: the `materials.md`
-evidence pile built by econ-paper-materials (or any pile the user points at).
+evidence pile built by econ-paper-writing-fragments (or any pile the user points at).
 
 Read the pile end-to-end first. Treat it and any exported result files as
 read-only inputs. Ask once where `main.tex` lives; default the project root.
