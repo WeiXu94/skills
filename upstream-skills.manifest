@@ -1,0 +1,25 @@
+# Upstream skills manifest (DATA) — consumed by scripts/sync-upstream-skills.sh
+#
+# Line types (whitespace-separated; blank lines and #-comments ignored):
+#   repo  <key>        <git-url>
+#   skill <repo-key>   <path/inside/upstream/repo>   <dest-folder-in-this-repo>
+#
+# The sync script downloads ONLY the listed folders (partial + sparse checkout)
+# and copies them flat into this repo. After each copy it rewrites the skill's
+# SKILL.md `name:` field to match <dest-folder>, so you may rename freely (e.g.
+# learn -> waza-learn) and the skill stays valid AND re-syncable.
+
+repo  mattpocock  https://github.com/mattpocock/skills.git
+repo  waza        https://github.com/tw93/Waza.git
+
+skill mattpocock  skills/in-progress/writing-beats                  writing-beats
+skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
+skill mattpocock  skills/engineering/diagnosing-bugs                diagnosing-bugs
+skill mattpocock  skills/engineering/codebase-design                codebase-design
+skill mattpocock  skills/productivity/writing-great-skills          writing-great-skills
+skill mattpocock  skills/in-progress/decision-mapping               decision-mapping
+skill mattpocock  skills/in-progress/writing-fragments              writing-fragments
+skill mattpocock  skills/in-progress/writing-shape                  writing-shape
+skill waza        skills/learn                                      waza-learn
+skill waza        skills/design                                     waza-design
+skill waza        skills/read                                       waza-read

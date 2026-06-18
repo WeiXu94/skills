@@ -1,54 +1,45 @@
 #!/usr/bin/env bash
 #
-# sync-upstream-skills.sh — vendor selected skills from upstream repos.
+# sync-upstream-skills.sh — vendor selected skills from upstream repos (LOGIC).
 #
-# Keeps a slim mirror of each upstream repo (partial + sparse checkout, so ONLY
-# the folders listed below are ever downloaded — not the whole repo) and copies
-# them, flat, into this repo. Re-run any time to pull upstream updates.
+# Reads the data file `upstream-skills.manifest` at the repo root, keeps a slim
+# mirror of each upstream repo (partial + sparse checkout, so ONLY the listed
+# folders are downloaded — not the whole repo), and copies them, flat, into this
+# repo. After each copy it rewrites the skill's SKILL.md `name:` field to match
+# the destination folder, so renamed skills stay valid AND re-syncable.
 #
 # Usage:
-#   scripts/sync-upstream-skills.sh           # sync everything in SKILLS
-#   git status                                # review what changed, then commit
+#   scripts/sync-upstream-skills.sh            # sync; then review with git status
+#   scripts/sync-upstream-skills.sh --stage    # sync AND git-add the dest folders
 #
-# To track another skill: add a line to SKILLS as
-#   "<repo-key> <path/inside/upstream/repo> <dest-folder-name-in-this-repo>"
-# (the repo-key must exist in REPOS). To add a new source, add a REPOS line.
+# Edit the manifest (not this script) to add/remove skills or sources.
 
 set -euo pipefail
 
-CACHE_ROOT="${UPSTREAM_SKILLS_CACHE:-$HOME/.cache/upstream-skills}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CACHE_ROOT="${UPSTREAM_SKILLS_CACHE:-$HOME/.cache/upstream-skills}"
+MANIFEST="${UPSTREAM_SKILLS_MANIFEST:-$REPO_ROOT/upstream-skills.manifest}"
 
-# --- config -----------------------------------------------------------------
+STAGE=0
+[ "${1:-}" = "--stage" ] && STAGE=1
 
-# Upstream sources:  "<repo-key> <git-url>"
-REPOS=(
-  "mattpocock https://github.com/mattpocock/skills.git"
-  "waza       https://github.com/tw93/Waza.git"
-)
+# --- load the manifest (data) ----------------------------------------------
+REPOS=()    # "<key> <url>"
+SKILLS=()   # "<key> <upstream/path> <dest>"
+while read -r kind a b c || [ -n "$kind" ]; do
+  case "$kind" in
+    repo)   REPOS+=("$a $b") ;;
+    skill)  SKILLS+=("$a $b $c") ;;
+    ''|\#*) ;;  # blank line or comment
+    *)      echo "manifest: ignoring unknown line type '$kind'" >&2 ;;
+  esac
+done < "$MANIFEST"
 
-# Skills to vendor:  "<repo-key> <upstream/path> <dest-folder-in-this-repo>"
-SKILLS=(
-  "mattpocock skills/in-progress/writing-beats                 writing-beats"
-  "mattpocock skills/engineering/improve-codebase-architecture improve-codebase-architecture"
-  "mattpocock skills/engineering/diagnosing-bugs               diagnosing-bugs"
-  "mattpocock skills/engineering/codebase-design               codebase-design"
-  "mattpocock skills/productivity/writing-great-skills         writing-great-skills"
-  "mattpocock skills/in-progress/decision-mapping              decision-mapping"
-  "mattpocock skills/in-progress/writing-fragments             writing-fragments"
-  "mattpocock skills/in-progress/writing-shape                 writing-shape"
-  "waza       skills/learn                                     learn"
-  "waza       skills/design                                    design"
-  "waza       skills/read                                      read"
-)
-# ---------------------------------------------------------------------------
-
-# 1. Per repo: create/refresh a slim mirror restricted to the wanted paths.
+# --- 1. per repo: create/refresh a slim mirror of the wanted paths ----------
 for repo in "${REPOS[@]}"; do
   read -r key url <<<"$repo"
   mirror="$CACHE_ROOT/$key"
 
-  # Gather this repo's sparse paths from the SKILLS list.
   paths=()
   for entry in "${SKILLS[@]}"; do
     read -r ekey src _dst <<<"$entry"
@@ -72,7 +63,7 @@ for repo in "${REPOS[@]}"; do
   git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
 done
 
-# 2. Copy each selected skill, flat, into this repo (mirror = source of truth).
+# --- 2. copy each skill, flat, and normalize its name: field ---------------
 echo "==> Copying into $REPO_ROOT"
 for entry in "${SKILLS[@]}"; do
   read -r key src dst <<<"$entry"
@@ -83,6 +74,16 @@ for entry in "${SKILLS[@]}"; do
   fi
   echo "    [$key] $src -> $dst/"
   rsync -a --delete --exclude '.git' "$mirror/$src/" "$REPO_ROOT/$dst/"
+
+  # Make the skill valid even if renamed: name: must equal the dest folder.
+  skillmd="$REPO_ROOT/$dst/SKILL.md"
+  if [ -f "$skillmd" ]; then
+    tmp="$(mktemp)"
+    sed '1,/^name:/ s/^name:.*/name: '"$dst"'/' "$skillmd" > "$tmp" && mv "$tmp" "$skillmd"
+  fi
+
+  [ "$STAGE" = 1 ] && git -C "$REPO_ROOT" add "$dst"
 done
 
-echo "==> Done. Review with:  git -C \"$REPO_ROOT\" status"
+echo "==> Done.${STAGE:+}"
+[ "$STAGE" = 1 ] && echo "    (dest folders staged)" || echo "    Review with: git -C \"$REPO_ROOT\" status"
