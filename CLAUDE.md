@@ -10,8 +10,9 @@ Each skill is a `<group>/<name>/` dir with `SKILL.md` (plus optional `scripts/`,
 `references/`). A skill's `name:` must equal its immediate dir name (`<name>`);
 the `<group>` level does not affect it. Claude discovers skills only one level
 deep, so consume them via per-skill symlinks (`add-skill <name>` for the current
-project, `add-skill -g <name>` for user-level `~/.claude` + `~/.agents`; in
-`~/.zsh_functions/`), not by pointing `.claude/skills` at a group folder.
+project, `add-skill -g <name>` for user-level `~/.claude` + `~/.agents`; source
+`scripts/add-skill`, symlinked into `~/.zsh_functions/`), not by pointing
+`.claude/skills` at a group folder.
 
 ## Vendored skills
 

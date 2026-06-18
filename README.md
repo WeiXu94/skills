@@ -95,7 +95,7 @@ Workflow skills I keep and tweak (not vendored — safe to edit):
 
 ## Installing into a project
 
-Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `add-skill` zsh function (in `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically, and the link name stays bare so it's discoverable:
+Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `add-skill` zsh function (source [`scripts/add-skill`](scripts/add-skill), symlinked into `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically (preferring `mine/` on a name clash), and the link name stays bare so it's discoverable:
 
 ```bash
 add-skill econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
@@ -114,6 +114,12 @@ Or symlink manually — point at the skill's real `<group>/<name>` path but keep
 ```bash
 mkdir -p ~/.claude/skills
 ln -s ~/skills/mattpocock/writing-shape ~/.claude/skills/writing-shape
+```
+
+In a fresh clone, install the function itself by symlinking it onto your `fpath`:
+
+```bash
+ln -s "$PWD/scripts/add-skill" ~/.zsh_functions/add-skill   # then: autoload -Uz add-skill
 ```
 
 ## Skill format

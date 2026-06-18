@@ -1,0 +1,90 @@
+# add-skill: symlink a skill into a project (or user-level) agent dir(s), by name.
+# Skills live in ~/skills/ grouped by source: mine/<name>, mattpocock/<name>,
+# waza/<name>, baoyu/<name>, ...  You give only the NAME; the source group is
+# resolved automatically (top level or one group folder deep).
+# Usage: add-skill [-g|--global] <skill-name> [agent ...]
+#   -g, --global   link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
+# Agents: pi, codex, opencode -> .agents/skills | claude -> .claude/skills
+# Examples:
+#   add-skill netnewswire-cli                    # project, defaults to claude + codex
+#   add-skill writing-shape claude               # project, single agent
+#   add-skill -g econ-paper-writing claude codex # user-level, both agents
+setopt local_options null_glob
+
+# Scope: default to the current project; -g/--global links into ~/ instead.
+local base="$PWD"
+while [[ "$1" == -* ]]; do
+    case "$1" in
+        -g|--global) base="$HOME"; shift ;;
+        -h|--help)
+            echo "Usage: add-skill [-g|--global] <skill-name> [agent ...]"
+            echo "  -g, --global   link into ~/ (user-level) instead of the current project"
+            echo "Agents: pi, codex, opencode (all -> .agents/skills), claude (-> .claude/skills)"
+            return 0 ;;
+        *) echo "Error: unknown option '$1'"; return 1 ;;
+    esac
+done
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: add-skill [-g|--global] <skill-name> [agent ...]"
+    echo "Agents: pi, codex, opencode (all -> .agents/skills), claude (-> .claude/skills)"
+    echo "Default agents when none given: claude codex"
+    return 1
+fi
+
+local skill_name="$1"
+shift
+
+# Resolve the skill by name: ~/skills/<name> or ~/skills/<group>/<name>.
+local m
+local -a matches
+for m in "$HOME/skills/$skill_name" "$HOME/skills"/*/"$skill_name"; do
+    [[ -d "$m" && -f "$m/SKILL.md" ]] && matches+=("$m")
+done
+
+if (( ${#matches} == 0 )); then
+    echo "Error: skill '$skill_name' not found under ~/skills/ (or ~/skills/*/)"
+    return 1
+fi
+
+local skill_src="${matches[1]}"
+if (( ${#matches} > 1 )); then
+    # On a name clash across groups, prefer mine/ (your fork wins over a
+    # vendored copy); otherwise fall back to the first match.
+    [[ -f "$HOME/skills/mine/$skill_name/SKILL.md" ]] && skill_src="$HOME/skills/mine/$skill_name"
+    echo "Note: multiple skills named '$skill_name':"
+    printf '  %s\n' "${matches[@]}"
+    echo "Using: $skill_src"
+fi
+
+# Default agents if none specified
+if [[ $# -eq 0 ]]; then
+    set -- claude codex
+fi
+
+# Map agent to its skills subdirectory under $base ($PWD, or ~/ with -g), then
+# link (link name = bare skill name, so it sits one level deep where the agent
+# can discover it).
+local agent_dir
+for agent in "$@"; do
+    case "$agent" in
+        pi|codex|opencode)  agent_dir=".agents/skills" ;;
+        claude)             agent_dir=".claude/skills" ;;
+        *)
+            echo "Error: unknown agent '$agent'. Use: pi, codex, opencode, claude"
+            return 1
+            ;;
+    esac
+
+    local target_dir="$base/$agent_dir"
+    mkdir -p "$target_dir"
+
+    local link="$target_dir/$skill_name"
+    if [[ -L "$link" || -e "$link" ]]; then
+        echo "Removing existing: $link"
+        rm -rf "$link"
+    fi
+
+    ln -s "$skill_src" "$link"
+    echo "Linked $skill_src -> $link"
+done
