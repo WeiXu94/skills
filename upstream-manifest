@@ -11,6 +11,7 @@
 
 repo  mattpocock  https://github.com/mattpocock/skills.git
 repo  waza        https://github.com/tw93/Waza.git
+repo  baoyu       https://github.com/JimLiu/baoyu-skills.git
 
 skill mattpocock  skills/in-progress/writing-beats                  writing-beats
 skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
@@ -23,3 +24,4 @@ skill mattpocock  skills/in-progress/writing-shape                  writing-shap
 skill waza        skills/learn                                      waza-learn
 skill waza        skills/design                                     waza-design
 skill waza        skills/read                                       waza-read
+skill baoyu       skills/baoyu-diagram                              baoyu-diagram
