@@ -53,6 +53,7 @@ From [mattpocock/skills](https://github.com/mattpocock/skills):
 | [improve-codebase-architecture](mattpocock/improve-codebase-architecture/SKILL.md) | Scan a codebase for deepening opportunities, present as an HTML report, then grill the chosen one. |
 | [diagnosing-bugs](mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
 | [grill-me](mattpocock/grill-me/SKILL.md) | A relentless interview to sharpen a plan or design. |
+| [grilling](mattpocock/grilling/SKILL.md) | The underlying relentless-interview technique that grill-me/grill-with-docs build on. |
 | [grill-with-docs](mattpocock/grill-with-docs/SKILL.md) | Like grill-me, but also writes ADRs + a glossary as decisions crystallize. |
 | [handoff](mattpocock/handoff/SKILL.md) | Compact the conversation into a handoff doc for a fresh agent. Locally patched ([`patches/handoff.patch`](patches/handoff.patch)) to save under `./docs/`. |
 | [setup-matt-pocock-skills](mattpocock/setup-matt-pocock-skills/SKILL.md) | Configure a repo for the engineering skills — issue tracker, triage labels, domain doc layout. Run once. |
