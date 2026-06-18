@@ -22,6 +22,10 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 `<group>/<name>/` here.
 
 - Add/remove a skill or source: edit `upstream-manifest`, not the script.
+- Quick add by URL: `scripts/add-skill-from-url <github-url-to-SKILL.md>` parses
+  the URL, appends the manifest line(s) (reusing the repo-key if that source is
+  already listed, else adding one), and syncs. Pass `--no-sync` to batch several
+  adds then sync once, and an optional trailing `dest-folder` to rename on import.
 - Sync rewrites each copied `SKILL.md` `name:` to match its dest dir, so you may
   rename freely (e.g. `learn` -> `waza-learn`).
 - Don't hand-edit a vendored skill dir; the next sync overwrites it. To

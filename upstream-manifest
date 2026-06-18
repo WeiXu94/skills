@@ -35,3 +35,6 @@ skill waza        skills/read                                       waza-read
 skill baoyu       skills/baoyu-diagram                              baoyu-diagram
 skill karpathy    skills/karpathy-guidelines                        karpathy-guidelines
 skill juliusbrussee skills/caveman                                  caveman
+skill mattpocock  skills/engineering/domain-modeling                domain-modeling
+skill mattpocock  skills/engineering/prototype                      prototype
+skill mattpocock  skills/engineering/to-prd                         to-prd

@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+#
+# add-skill-from-url — vendor a single skill given its GitHub URL (LOGIC).
+#
+# Parses a GitHub URL that points at a skill's SKILL.md (or its folder),
+# registers it in the `upstream-manifest` data file (adding a `repo` line if
+# that source is new, plus a `skill` line for the skill), then runs
+# sync-upstream-skills.sh to actually vendor it into `<repo-key>/<dest>/`.
+#
+# Accepted URL shapes:
+#   https://github.com/<owner>/<repo>/blob/<branch>/<path>/SKILL.md
+#   https://github.com/<owner>/<repo>/tree/<branch>/<path>
+#   https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>/SKILL.md
+#
+# Usage:
+#   scripts/add-skill-from-url <url> [dest-folder]
+#   scripts/add-skill-from-url --no-sync <url> [dest-folder]
+#
+#   dest-folder  override the vendored folder name (defaults to the skill's own
+#                folder name, e.g. domain-modeling). Use it to rename on import.
+#   --no-sync    only edit the manifest; skip the sync (handy when adding many
+#                skills in a row, then syncing once at the end).
+#
+# The repo-key is reused if a `repo` line already points at the same GitHub
+# repo; otherwise a new key (the lower-cased owner) is added.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MANIFEST="${UPSTREAM_SKILLS_MANIFEST:-$REPO_ROOT/upstream-manifest}"
+
+DO_SYNC=1
+if [ "${1:-}" = "--no-sync" ]; then DO_SYNC=0; shift; fi
+
+URL="${1:-}"
+DEST_OVERRIDE="${2:-}"
+
+if [ -z "$URL" ]; then
+  echo "Usage: add-skill-from-url [--no-sync] <github-url> [dest-folder]" >&2
+  exit 1
+fi
+
+# --- parse the URL ----------------------------------------------------------
+# Strip protocol + host, leaving the path part, then pull fields positionally.
+rest="${URL#http://}"; rest="${rest#https://}"
+host="${rest%%/*}"
+path="${rest#*/}"
+
+case "$host" in
+  github.com)
+    # <owner>/<repo>/(blob|tree)/<branch>/<skillpath...>
+    owner="$(echo "$path" | cut -d/ -f1)"
+    repo="$(echo "$path" | cut -d/ -f2)"
+    branch="$(echo "$path" | cut -d/ -f4)"
+    skillpath="$(echo "$path" | cut -d/ -f5-)"
+    ;;
+  raw.githubusercontent.com)
+    # <owner>/<repo>/<branch>/<skillpath...>
+    owner="$(echo "$path" | cut -d/ -f1)"
+    repo="$(echo "$path" | cut -d/ -f2)"
+    branch="$(echo "$path" | cut -d/ -f3)"
+    skillpath="$(echo "$path" | cut -d/ -f4-)"
+    ;;
+  *)
+    echo "Error: unsupported host '$host' (expected github.com or raw.githubusercontent.com)" >&2
+    exit 1
+    ;;
+esac
+
+# Drop a trailing slash, then a trailing /SKILL.md if the URL named the file.
+skillpath="${skillpath%/}"
+case "$skillpath" in
+  */SKILL.md|*/SKILL.MD|*/Skill.md) skillpath="${skillpath%/*}" ;;
+  SKILL.md|SKILL.MD|Skill.md)
+    echo "Error: URL points at a top-level SKILL.md with no skill folder" >&2; exit 1 ;;
+esac
+
+if [ -z "$owner" ] || [ -z "$repo" ] || [ -z "$skillpath" ]; then
+  echo "Error: could not parse owner/repo/path from URL: $URL" >&2
+  exit 1
+fi
+
+repo="${repo%.git}"
+dest="${DEST_OVERRIDE:-${skillpath##*/}}"
+giturl="https://github.com/$owner/$repo.git"
+
+# --- find or create the repo-key in the manifest ----------------------------
+# Reuse an existing `repo` line that points at the same GitHub repo.
+repokey="$(awk -v u1="$giturl" -v u2="https://github.com/$owner/$repo" '
+  $1=="repo" && ($3==u1 || $3==u2) { print $2; exit }
+' "$MANIFEST")"
+
+NEW_REPO=0
+if [ -z "$repokey" ]; then
+  repokey="$(echo "$owner" | tr '[:upper:]' '[:lower:]')"
+  if awk -v k="$repokey" '$1=="repo" && $2==k {f=1} END{exit !f}' "$MANIFEST"; then
+    echo "Error: repo key '$repokey' already exists for a different URL." >&2
+    echo "       Edit $MANIFEST manually to pick a distinct key." >&2
+    exit 1
+  fi
+  NEW_REPO=1
+fi
+
+# --- idempotency: skip if this skill is already registered ------------------
+if awk -v k="$repokey" -v d="$dest" \
+     '$1=="skill" && $2==k && $4==d {f=1} END{exit !f}' "$MANIFEST"; then
+  echo "==> Already in manifest: skill $repokey ... $dest (no manifest change)"
+else
+  # Insert the repo line (if new) after the last `repo` line and the skill line
+  # after the last `skill` line, so the file stays grouped; append if a section
+  # is missing entirely.
+  tmp="$(mktemp)"
+  awk -v newrepo="$NEW_REPO" -v rk="$repokey" -v ru="$giturl" \
+      -v sp="$skillpath" -v sd="$dest" '
+    { lines[NR]=$0; if ($1=="repo") lastrepo=NR; if ($1=="skill") lastskill=NR }
+    END {
+      for (i=1;i<=NR;i++) {
+        print lines[i]
+        if (newrepo=="1" && lastrepo>0 && i==lastrepo) printf "repo  %s  %s\n", rk, ru
+        if (lastskill>0 && i==lastskill)               printf "skill %s  %s  %s\n", rk, sp, sd
+      }
+      if (newrepo=="1" && lastrepo==0) printf "repo  %s  %s\n", rk, ru
+      if (lastskill==0)                printf "skill %s  %s  %s\n", rk, sp, sd
+    }
+  ' "$MANIFEST" > "$tmp" && mv "$tmp" "$MANIFEST"
+  [ "$NEW_REPO" = 1 ] && echo "==> Added repo:  $repokey  $giturl"
+  echo "==> Added skill: $repokey  $skillpath  -> $repokey/$dest/"
+fi
+
+# --- vendor it --------------------------------------------------------------
+if [ "$DO_SYNC" = 1 ]; then
+  echo "==> Syncing..."
+  "$REPO_ROOT/scripts/sync-upstream-skills.sh"
+  echo "==> Done. Vendored at: $repokey/$dest/"
+else
+  echo "==> Skipped sync (--no-sync). Run scripts/sync-upstream-skills.sh to vendor."
+fi
