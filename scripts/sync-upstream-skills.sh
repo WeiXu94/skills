@@ -2,7 +2,7 @@
 #
 # sync-upstream-skills.sh — vendor selected skills from upstream repos (LOGIC).
 #
-# Reads the data file `upstream-skills.manifest` at the repo root, keeps a slim
+# Reads the data file `upstream-manifest` at the repo root, keeps a slim
 # mirror of each upstream repo (partial + sparse checkout, so ONLY the listed
 # folders are downloaded — not the whole repo), and copies them, flat, into this
 # repo. After each copy it rewrites the skill's SKILL.md `name:` field to match
@@ -18,7 +18,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CACHE_ROOT="${UPSTREAM_SKILLS_CACHE:-$HOME/.cache/upstream-skills}"
-MANIFEST="${UPSTREAM_SKILLS_MANIFEST:-$REPO_ROOT/upstream-skills.manifest}"
+MANIFEST="${UPSTREAM_SKILLS_MANIFEST:-$REPO_ROOT/upstream-manifest}"
 
 STAGE=0
 [ "${1:-}" = "--stage" ] && STAGE=1
