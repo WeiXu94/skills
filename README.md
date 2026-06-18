@@ -23,16 +23,21 @@ Inspired by [Mario Zechner](https://github.com/badlogic): give the agent a thin 
 | Skill | Description |
 |-------|-------------|
 | [china-micro-surveys](mine/china-micro-surveys/SKILL.md) | Catalog and metadata for Chinese micro survey datasets (CFPS, CHFS, CHARLS, etc.). |
-| [econ-paper-writing](mine/econ-paper-writing/SKILL.md) | Section-by-section guidance for drafting/polishing economics papers. |
+| [econ-paper-writing](mine/econ-paper-writing/SKILL.md) | Section-by-section guidance for drafting/polishing economics papers (structural reference). |
+| [econ-paper-writing-fragments](mine/econ-paper-writing-fragments/SKILL.md) | Inventory scattered results — tables, figures, data, model, literature, code — into one evidence pile, each exhibit with its takeaway. |
+| [econ-paper-writing-shape](mine/econ-paper-writing-shape/SKILL.md) | Draft the paper section by section into `sections/*.tex` from the pile + a fixed skeleton, with the grilling tone. |
 | [economics-model](mine/economics-model/SKILL.md) | Reference notes on widely used economic models. |
 | [lit-review-assistant](mine/lit-review-assistant/SKILL.md) | Templates for structuring literature reviews and finding gaps. |
 | [matlab-econ-model-estimator](mine/matlab-econ-model-estimator/SKILL.md) | Parameter estimation for econ models in MATLAB. |
 | [research-ideation](mine/research-ideation/SKILL.md) | Frameworks for going from phenomena to testable hypotheses. |
 
+The three `econ-paper-writing*` skills form a pipeline: `econ-paper-writing` is the structural reference, `econ-paper-writing-fragments` gathers results into a materials pile, and `econ-paper-writing-shape` drafts the paper section by section from it.
+
 ### Custom CLI tools (mine)
 
 | Skill | Description |
 |-------|-------------|
+| [chrome-history-cli](mine/chrome-history-cli/SKILL.md) | Search local Chrome browsing history exported by the History Trends Unlimited extension. |
 | [netnewswire-cli](mine/netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
 | [zotero-cli](mine/zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
 
@@ -49,6 +54,9 @@ From [mattpocock/skills](https://github.com/mattpocock/skills):
 | [writing-beats](mattpocock/writing-beats/SKILL.md) | Assemble raw material as a narrative journey of beats, choose-your-own-adventure style. |
 | [writing-great-skills](mattpocock/writing-great-skills/SKILL.md) | Vocabulary and principles for writing predictable, well-formed skills. |
 | [decision-mapping](mattpocock/decision-mapping/SKILL.md) | Turn a loose idea into a sequenced map of investigation tickets, driven to resolution one at a time. |
+| [domain-modeling](mattpocock/domain-modeling/SKILL.md) | Build and sharpen a project's ubiquitous language; record architectural decisions as ADRs. |
+| [prototype](mattpocock/prototype/SKILL.md) | Build a throwaway prototype — a runnable terminal app or several UI variants — to flesh out a design. |
+| [to-prd](mattpocock/to-prd/SKILL.md) | Turn the current conversation into a PRD and publish it to the project issue tracker. |
 | [codebase-design](mattpocock/codebase-design/SKILL.md) | Shared vocabulary for designing deep modules — interfaces, seams, testability. |
 | [improve-codebase-architecture](mattpocock/improve-codebase-architecture/SKILL.md) | Scan a codebase for deepening opportunities, present as an HTML report, then grill the chosen one. |
 | [diagnosing-bugs](mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
@@ -86,11 +94,13 @@ From [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman):
 
 ### Misc (mine)
 
-Workflow skills I keep and tweak (not vendored — safe to edit):
+My own skills that don't fit the categories above (not vendored — safe to edit):
 
 | Skill | Description |
 |-------|-------------|
 | [handoff](mine/handoff/SKILL.md) | Fork of `mattpocock/handoff`, tweaked to save under `./docs/<timestamp>-handoff-<topic>.md`. **Takes priority** over the vendored copy in `add-skill`. Edit freely; not synced. |
+| [hyperframes](mine/hyperframes/SKILL.md) | Create video compositions, animations, title cards, captions, and scene transitions in HyperFrames HTML. |
+| [macos-icon](mine/macos-icon/SKILL.md) | Create, refine, validate, and export macOS app icons from raster artwork. |
 | [record-as-implement](mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
 
 ## Installing into a project
