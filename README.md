@@ -1,6 +1,6 @@
 # skills
 
-A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized by source: my own skills live in `mine/`; skills vendored from other authors live one folder per source (`mattpocock/`, `waza/`, `baoyu/`, `karpathy/`), kept in sync from upstream.
+A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized by source: my own skills live in `mine/`; skills vendored from other authors live one folder per source (`mattpocock/`, `waza/`, `baoyu/`, `karpathy/`, `juliusbrussee/`), kept in sync from upstream.
 
 My own skills come in two flavors:
 
@@ -38,7 +38,7 @@ Inspired by [Mario Zechner](https://github.com/badlogic): give the agent a thin 
 
 ### Vendored upstream skills
 
-Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them.
+Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them. To customize one, drop a unified diff at `patches/<name>.patch`; sync re-applies it after each refresh (e.g. the local tweak to `handoff` lives in [`patches/handoff.patch`](patches/handoff.patch)).
 
 From [mattpocock/skills](https://github.com/mattpocock/skills):
 
@@ -54,6 +54,8 @@ From [mattpocock/skills](https://github.com/mattpocock/skills):
 | [diagnosing-bugs](mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
 | [grill-me](mattpocock/grill-me/SKILL.md) | A relentless interview to sharpen a plan or design. |
 | [grill-with-docs](mattpocock/grill-with-docs/SKILL.md) | Like grill-me, but also writes ADRs + a glossary as decisions crystallize. |
+| [handoff](mattpocock/handoff/SKILL.md) | Compact the conversation into a handoff doc for a fresh agent. Locally patched ([`patches/handoff.patch`](patches/handoff.patch)) to save under `./docs/`. |
+| [setup-matt-pocock-skills](mattpocock/setup-matt-pocock-skills/SKILL.md) | Configure a repo for the engineering skills — issue tracker, triage labels, domain doc layout. Run once. |
 
 From [tw93/Waza](https://github.com/tw93/Waza) (renamed `waza-*` for provenance):
 
@@ -75,13 +77,18 @@ From [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-ka
 |-------|-------------|
 | [karpathy-guidelines](karpathy/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes — surgical changes, surfaced assumptions, verifiable success criteria. |
 
+From [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman):
+
+| Skill | Description |
+|-------|-------------|
+| [caveman](juliusbrussee/caveman/SKILL.md) | Ultra-compressed "caveman" communication mode — cuts tokens ~75% while keeping technical accuracy; intensity levels incl. wényán. |
+
 ### Misc (mine)
 
 Workflow skills I keep and tweak (not vendored — safe to edit):
 
 | Skill | Description |
 |-------|-------------|
-| [handoff](mine/handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. (Tweaked from mattpocock's.) |
 | [record-as-implement](mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
 
 ## Installing into a project

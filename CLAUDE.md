@@ -3,8 +3,8 @@
 Collection of Claude Code skills, grouped by source:
 
 - `mine/` — my own skills.
-- `mattpocock/`, `waza/`, `baoyu/`, `karpathy/` — skills vendored from upstream
-  repos (one folder per source).
+- `mattpocock/`, `waza/`, `baoyu/`, `karpathy/`, `juliusbrussee/` — skills
+  vendored from upstream repos (one folder per source).
 
 Each skill is a `<group>/<name>/` dir with `SKILL.md` (plus optional `scripts/`,
 `references/`). A skill's `name:` must equal its immediate dir name (`<name>`);
@@ -24,6 +24,8 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 - Sync rewrites each copied `SKILL.md` `name:` to match its dest dir, so you may
   rename freely (e.g. `learn` -> `waza-learn`).
 - Don't hand-edit a vendored skill dir; the next sync overwrites it.
+- To customize a vendored skill, put a unified diff at `patches/<name>.patch`;
+  sync re-applies it after the copy (see `patches/handoff.patch`).
 
 ## Hook
 

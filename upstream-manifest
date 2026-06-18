@@ -12,8 +12,9 @@
 
 repo  mattpocock  https://github.com/mattpocock/skills.git
 repo  waza        https://github.com/tw93/Waza.git
-repo  baoyu       https://github.com/JimLiu/baoyu-skills.git
-repo  karpathy    https://github.com/multica-ai/andrej-karpathy-skills.git
+repo  baoyu         https://github.com/JimLiu/baoyu-skills.git
+repo  karpathy      https://github.com/multica-ai/andrej-karpathy-skills.git
+repo  juliusbrussee https://github.com/JuliusBrussee/caveman.git
 
 skill mattpocock  skills/in-progress/writing-beats                  writing-beats
 skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
@@ -25,8 +26,11 @@ skill mattpocock  skills/in-progress/writing-fragments              writing-frag
 skill mattpocock  skills/in-progress/writing-shape                  writing-shape
 skill mattpocock  skills/productivity/grill-me                      grill-me
 skill mattpocock  skills/engineering/grill-with-docs                grill-with-docs
+skill mattpocock  skills/productivity/handoff                       handoff
+skill mattpocock  skills/engineering/setup-matt-pocock-skills       setup-matt-pocock-skills
 skill waza        skills/learn                                      waza-learn
 skill waza        skills/design                                     waza-design
 skill waza        skills/read                                       waza-read
 skill baoyu       skills/baoyu-diagram                              baoyu-diagram
 skill karpathy    skills/karpathy-guidelines                        karpathy-guidelines
+skill juliusbrussee skills/caveman                                  caveman
