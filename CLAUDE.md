@@ -48,17 +48,18 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 - Add/remove a skill or source: edit `upstream-manifest`, not the script.
 - Quick add by URL: `scripts/add-skill-from-url <github-url-to-SKILL.md>` parses
   the URL, appends the manifest line(s) (reusing the repo-key if that source is
-  already listed, else adding one), and syncs. Pass `--no-sync` to batch several
-  adds then sync once, and an optional trailing `dest-folder` to rename on import.
+  already listed, else adding one), and syncs ONLY that skill (other vendored
+  skills are left untouched). Pass `--no-sync` to batch several adds then sync
+  once, and an optional trailing `dest-folder` to rename on import.
+- A bare `sync-upstream-skills.sh` re-vendors every manifest skill; pass
+  `<dest>...` to limit it to named skills. A source repo is fetched only when its
+  upstream tip has moved since the last sync (a cheap `git ls-remote` probe), so
+  an unchanged upstream costs almost nothing.
 - Sync rewrites each copied `SKILL.md` `name:` to match its dest dir, so you may
   rename freely (e.g. `learn` -> `waza-learn`).
 - Don't hand-edit a vendored skill dir; the next sync overwrites it. To
   customize one, copy it into `mine/`; `link-skills` prefers `mine/` on a name
   clash, so the vendored copy keeps tracking upstream while your fork is linked.
 
-## Hook
-
-`.githooks/pre-commit` syncs + stages vendored skills on every commit (needs
-network; skips if offline; bypass with `--no-verify`). Enable in a fresh clone:
-
-    git config core.hooksPath .githooks
+Vendored skills are NOT auto-synced; run `scripts/sync-upstream-skills.sh` (all)
+or `scripts/add-skill-from-url <url>` (one) when you want to pull upstream.

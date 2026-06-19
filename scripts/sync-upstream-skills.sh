@@ -10,8 +10,13 @@
 # renamed skills stay valid AND re-syncable.
 #
 # Usage:
-#   scripts/sync-upstream-skills.sh            # sync; then review with git status
-#   scripts/sync-upstream-skills.sh --stage    # sync AND git-add the dest folders
+#   scripts/sync-upstream-skills.sh                # sync every manifest skill
+#   scripts/sync-upstream-skills.sh --stage        # sync AND git-add the dest folders
+#   scripts/sync-upstream-skills.sh <dest>...      # sync ONLY the named skill(s)
+#
+# A source repo is fetched only when its upstream tip has moved since the last
+# sync — checked with a cheap `git ls-remote` probe (no objects downloaded) — so
+# an unchanged upstream costs just the probe, not a full re-fetch.
 #
 # Edit the manifest (not this script) to add/remove skills or sources.
 
@@ -21,8 +26,17 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CACHE_ROOT="${UPSTREAM_SKILLS_CACHE:-$HOME/.cache/upstream-skills}"
 MANIFEST="${UPSTREAM_SKILLS_MANIFEST:-$REPO_ROOT/upstream-manifest}"
 
+# Flags plus an optional positional filter: dest-folder names to restrict the
+# sync to (anything not starting with `-` that isn't a known flag).
 STAGE=0
-[ "${1:-}" = "--stage" ] && STAGE=1
+FILTER=()
+for arg in "$@"; do
+  case "$arg" in
+    --stage) STAGE=1 ;;
+    -*)      echo "Unknown flag: $arg" >&2; exit 1 ;;
+    *)       FILTER+=("$arg") ;;
+  esac
+done
 
 # --- load the manifest (data) ----------------------------------------------
 REPOS=()    # "<key> <url>"
@@ -36,6 +50,23 @@ while read -r kind a b c || [ -n "$kind" ]; do
   esac
 done < "$MANIFEST"
 
+# --- restrict to the requested skills, if a filter was given ---------------
+if [ ${#FILTER[@]} -gt 0 ]; then
+  kept=()
+  for entry in "${SKILLS[@]}"; do
+    read -r _k _s d <<<"$entry"
+    for want in "${FILTER[@]}"; do
+      if [ "$d" = "$want" ]; then kept+=("$entry"); break; fi
+    done
+  done
+  if [ ${#kept[@]} -eq 0 ]; then
+    echo "No manifest skills match: ${FILTER[*]}" >&2
+    exit 1
+  fi
+  SKILLS=("${kept[@]}")
+  echo "==> Restricting sync to: ${FILTER[*]}"
+fi
+
 # --- 1. per repo: create/refresh a slim mirror of the wanted paths ----------
 for repo in "${REPOS[@]}"; do
   read -r key url <<<"$repo"
@@ -48,20 +79,36 @@ for repo in "${REPOS[@]}"; do
   done
   [ ${#paths[@]} -eq 0 ] && continue
 
+  # Probe upstream once: default branch + tip SHA in a single network round-trip,
+  # no objects downloaded.
+  symref="$(git ls-remote --symref "$url" HEAD)"
+  branch="$(printf '%s\n' "$symref" | awk '/^ref:/{sub("refs/heads/","",$2); print $2; exit}')"
+  remote_sha="$(printf '%s\n' "$symref" | awk '$2=="HEAD"{print $1; exit}')"
+  : "${branch:?[$key] could not resolve upstream default branch (offline?)}"
+
   if [ ! -d "$mirror/.git" ]; then
     echo "==> [$key] creating slim mirror at $mirror"
     mkdir -p "$CACHE_ROOT"
     git clone --filter=blob:none --no-checkout --depth 1 "$url" "$mirror"
     git -C "$mirror" sparse-checkout init --cone
+    local_sha=""
+  else
+    local_sha="$(git -C "$mirror" rev-parse HEAD 2>/dev/null || echo "")"
   fi
 
+  # Narrow the working tree to the wanted paths. In a partial clone this lazily
+  # fetches blobs for any newly-listed path, so it works even when we skip the
+  # full fetch below.
   echo "==> [$key] sparse paths: ${paths[*]}"
   git -C "$mirror" sparse-checkout set "${paths[@]}"
 
-  branch="$(git -C "$mirror" remote show origin | sed -n 's/.*HEAD branch: //p')"
-  echo "==> [$key] fetching $branch"
-  git -C "$mirror" fetch --depth 1 origin "$branch"
-  git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
+  if [ "$remote_sha" = "$local_sha" ]; then
+    echo "==> [$key] up to date at ${remote_sha:0:12}; skipping fetch"
+  else
+    echo "==> [$key] upstream at ${remote_sha:0:12}; fetching $branch"
+    git -C "$mirror" fetch --depth 1 origin "$branch"
+    git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
+  fi
 done
 
 # --- 2. copy each skill, flat, and normalize its name: field ---------------
