@@ -15,7 +15,8 @@ A skill's `name:` must equal its immediate dir name (`<name>`); the enclosing
 level deep, so consume them via per-skill symlinks (`link-skills <name>` for the
 current project, `link-skills -g <name>` for user-level `~/.claude` + `~/.agents`;
 source `scripts/link-skills`, symlinked into `~/.zsh_functions/`), not by pointing
-`.claude/skills` at a group folder.
+`.claude/skills` at a group folder. Zsh tab-completion for `link-skills` lives in
+`scripts/_link-skills` (symlink onto `fpath`; needs `compinit`).
 
 ## Profiles
 

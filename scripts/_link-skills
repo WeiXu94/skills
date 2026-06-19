@@ -1,0 +1,41 @@
+#compdef link-skills
+#
+# Zsh tab-completion for `link-skills` (see scripts/link-skills).
+#
+# Completes, in order:
+#   - the -g/--global flag
+#   - the skill NAME (positional 1) from ~/skills/skills/mine/* and
+#     ~/skills/skills/vendor/*/* — gathered live, so new skills appear at once
+#   - trailing agent names (pi/codex/opencode/claude)
+#
+# Install (zsh; matches this repo's ~/.zsh_functions convention):
+#   ln -s ~/skills/scripts/_link-skills ~/.zsh_functions/_link-skills
+# then make sure the completion system is initialized in ~/.zshrc, AFTER
+# `fpath=(~/.zsh_functions $fpath)`:
+#   autoload -Uz compinit && compinit
+# The arrow-navigable menu is enabled for this command by the zstyle below,
+# so no global `menu select` setting is required.
+
+# Arrow-key menu selection, scoped to just this command.
+zstyle ':completion:*:*:link-skills:*' menu select
+
+local curcontext="$curcontext" state line
+typeset -A opt_args
+local skills_root="${HOME}/skills/skills"
+
+# Gather skill names: <root>/mine/<name>/SKILL.md and <root>/vendor/<src>/<name>/SKILL.md.
+local -a skills
+local d
+for d in "$skills_root"/mine/*/SKILL.md(N) "$skills_root"/vendor/*/*/SKILL.md(N); do
+  skills+=("${d:h:t}")          # SKILL.md -> its parent dir name (the skill name)
+done
+skills=(${(u)skills})           # de-dup (a name can exist in both mine/ and vendor/)
+
+_arguments -s -C \
+  '(-g --global)'{-g,--global}'[link into ~/ (user-level: ~/.claude, ~/.agents) instead of the project]' \
+  '1:skill:->skill' \
+  '*:agent:(pi codex opencode claude)'
+
+case "$state" in
+  (skill) _describe -t skills 'skill' skills ;;
+esac

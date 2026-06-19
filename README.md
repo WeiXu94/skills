@@ -132,6 +132,16 @@ In a fresh clone, install the function itself by symlinking it onto your `fpath`
 ln -s "$PWD/scripts/link-skills" ~/.zsh_functions/link-skills   # then: autoload -Uz link-skills
 ```
 
+**Tab completion (zsh).** [`scripts/_link-skills`](scripts/_link-skills) completes `link-skills` with an arrow-navigable menu of skill names (plus the `-g` flag and agent names), gathered live from `skills/mine/` and `skills/vendor/`. Symlink it onto your `fpath` and make sure the completion system is initialized:
+
+```bash
+ln -s "$PWD/scripts/_link-skills" ~/.zsh_functions/_link-skills
+# in ~/.zshrc, AFTER `fpath=(~/.zsh_functions $fpath)`:
+autoload -Uz compinit && compinit
+```
+
+Then `link-skills <Tab>` pops up the menu. (The arrow-key menu is enabled per-command by the completion file, so no global `menu select` zstyle is needed.)
+
 ### Profiles
 
 To toggle a whole *set* of skills at once — e.g. an econ-research set vs a programming set — use **profiles**. A profile is a file under [`profiles/`](profiles/) listing skill names (one per line); [`scripts/use-skill-profile`](scripts/use-skill-profile) links the lot via `link-skills`. Profiles are independent — nothing is auto-unioned. The `global` profile holds cross-cutting skills; apply it once at user level for skills you want everywhere.
