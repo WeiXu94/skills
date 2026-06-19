@@ -6,7 +6,7 @@
 # registers it in the `upstream-manifest` data file (adding a `repo` line if
 # that source is new, plus a `skill` line for the skill), then runs
 # sync-upstream-skills.sh for THAT skill only, vendoring it into
-# `<repo-key>/<dest>/`. Other vendored skills are left untouched.
+# `skills/vendor/<repo-key>/<dest>/`. Other vendored skills are left untouched.
 #
 # Accepted URL shapes:
 #   https://github.com/<owner>/<repo>/blob/<branch>/<path>/SKILL.md
@@ -125,14 +125,14 @@ else
     }
   ' "$MANIFEST" > "$tmp" && mv "$tmp" "$MANIFEST"
   [ "$NEW_REPO" = 1 ] && echo "==> Added repo:  $repokey  $giturl"
-  echo "==> Added skill: $repokey  $skillpath  -> $repokey/$dest/"
+  echo "==> Added skill: $repokey  $skillpath  -> skills/vendor/$repokey/$dest/"
 fi
 
 # --- vendor it --------------------------------------------------------------
 if [ "$DO_SYNC" = 1 ]; then
   echo "==> Syncing $dest only..."
   "$REPO_ROOT/scripts/sync-upstream-skills.sh" "$dest"
-  echo "==> Done. Vendored at: $repokey/$dest/"
+  echo "==> Done. Vendored at: skills/vendor/$repokey/$dest/"
 else
   echo "==> Skipped sync (--no-sync). Run scripts/sync-upstream-skills.sh to vendor."
 fi

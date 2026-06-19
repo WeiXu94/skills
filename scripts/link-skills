@@ -1,7 +1,7 @@
 # link-skills: symlink a skill into a project (or user-level) agent dir(s), by name.
-# Skills live in ~/skills/ grouped by source: mine/<name>, mattpocock/<name>,
-# waza/<name>, baoyu/<name>, ...  You give only the NAME; the source group is
-# resolved automatically (top level or one group folder deep).
+# Skills live under ~/skills/skills/: mine in mine/<name>, vendored ones in
+# vendor/<source>/<name> (e.g. vendor/mattpocock/<name>). You give only the NAME;
+# the location is resolved automatically (mine/ or one vendor source deep).
 # Usage: link-skills [-g|--global] <skill-name> [agent ...]
 #   -g, --global   link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
 # Agents: pi, codex, opencode -> .agents/skills | claude -> .claude/skills
@@ -35,23 +35,25 @@ fi
 local skill_name="$1"
 shift
 
-# Resolve the skill by name: ~/skills/<name> or ~/skills/<group>/<name>.
+# Resolve the skill by name: ~/skills/skills/mine/<name> or
+# ~/skills/skills/vendor/<source>/<name>.
+local skills_root="$HOME/skills/skills"
 local m
 local -a matches
-for m in "$HOME/skills/$skill_name" "$HOME/skills"/*/"$skill_name"; do
+for m in "$skills_root/mine/$skill_name" "$skills_root/vendor"/*/"$skill_name"; do
     [[ -d "$m" && -f "$m/SKILL.md" ]] && matches+=("$m")
 done
 
 if (( ${#matches} == 0 )); then
-    echo "Error: skill '$skill_name' not found under ~/skills/ (or ~/skills/*/)"
+    echo "Error: skill '$skill_name' not found under $skills_root/mine/ or $skills_root/vendor/*/"
     return 1
 fi
 
 local skill_src="${matches[1]}"
 if (( ${#matches} > 1 )); then
-    # On a name clash across groups, prefer mine/ (your fork wins over a
-    # vendored copy); otherwise fall back to the first match.
-    [[ -f "$HOME/skills/mine/$skill_name/SKILL.md" ]] && skill_src="$HOME/skills/mine/$skill_name"
+    # On a name clash, prefer mine/ (your fork wins over a vendored copy);
+    # otherwise fall back to the first match.
+    [[ -f "$skills_root/mine/$skill_name/SKILL.md" ]] && skill_src="$skills_root/mine/$skill_name"
     echo "Note: multiple skills named '$skill_name':"
     printf '  %s\n' "${matches[@]}"
     echo "Using: $skill_src"

@@ -1,6 +1,6 @@
 # skills
 
-A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized by source: my own skills live in `mine/`; skills vendored from other authors live one folder per source (`mattpocock/`, `waza/`, `baoyu/`, `karpathy/`, `juliusbrussee/`), kept in sync from upstream.
+A personal collection of skills for AI coding agents (primarily Claude Code, but format is portable to pi-coding-agent, Codex CLI, Amp, Droid). Organized under `skills/`: my own skills live in `skills/mine/`; skills vendored from other authors live in `skills/vendor/<source>/`, one folder per source (`mattpocock/`, `waza/`, `baoyu/`, `karpathy/`, `juliusbrussee/`, `badlogic/`), kept in sync from upstream.
 
 My own skills come in two flavors:
 
@@ -22,14 +22,14 @@ Inspired by [Mario Zechner](https://github.com/badlogic): give the agent a thin 
 
 | Skill | Description |
 |-------|-------------|
-| [china-micro-surveys](mine/china-micro-surveys/SKILL.md) | Catalog and metadata for Chinese micro survey datasets (CFPS, CHFS, CHARLS, etc.). |
-| [econ-paper-writing](mine/econ-paper-writing/SKILL.md) | Section-by-section guidance for drafting/polishing economics papers (structural reference). |
-| [econ-paper-writing-fragments](mine/econ-paper-writing-fragments/SKILL.md) | Inventory scattered results — tables, figures, data, model, literature, code — into one evidence pile, each exhibit with its takeaway. |
-| [econ-paper-writing-shape](mine/econ-paper-writing-shape/SKILL.md) | Draft the paper section by section into `sections/*.tex` from the pile + a fixed skeleton, with the grilling tone. |
-| [economics-model](mine/economics-model/SKILL.md) | Reference notes on widely used economic models. |
-| [lit-review-assistant](mine/lit-review-assistant/SKILL.md) | Templates for structuring literature reviews and finding gaps. |
-| [matlab-econ-model-estimator](mine/matlab-econ-model-estimator/SKILL.md) | Parameter estimation for econ models in MATLAB. |
-| [research-ideation](mine/research-ideation/SKILL.md) | Frameworks for going from phenomena to testable hypotheses. |
+| [china-micro-surveys](skills/mine/china-micro-surveys/SKILL.md) | Catalog and metadata for Chinese micro survey datasets (CFPS, CHFS, CHARLS, etc.). |
+| [econ-paper-writing](skills/mine/econ-paper-writing/SKILL.md) | Section-by-section guidance for drafting/polishing economics papers (structural reference). |
+| [econ-paper-writing-fragments](skills/mine/econ-paper-writing-fragments/SKILL.md) | Inventory scattered results — tables, figures, data, model, literature, code — into one evidence pile, each exhibit with its takeaway. |
+| [econ-paper-writing-shape](skills/mine/econ-paper-writing-shape/SKILL.md) | Draft the paper section by section into `sections/*.tex` from the pile + a fixed skeleton, with the grilling tone. |
+| [economics-model](skills/mine/economics-model/SKILL.md) | Reference notes on widely used economic models. |
+| [lit-review-assistant](skills/mine/lit-review-assistant/SKILL.md) | Templates for structuring literature reviews and finding gaps. |
+| [matlab-econ-model-estimator](skills/mine/matlab-econ-model-estimator/SKILL.md) | Parameter estimation for econ models in MATLAB. |
+| [research-ideation](skills/mine/research-ideation/SKILL.md) | Frameworks for going from phenomena to testable hypotheses. |
 
 The three `econ-paper-writing*` skills form a pipeline: `econ-paper-writing` is the structural reference, `econ-paper-writing-fragments` gathers results into a materials pile, and `econ-paper-writing-shape` drafts the paper section by section from it.
 
@@ -37,60 +37,60 @@ The three `econ-paper-writing*` skills form a pipeline: `econ-paper-writing` is 
 
 | Skill | Description |
 |-------|-------------|
-| [chrome-history-cli](mine/chrome-history-cli/SKILL.md) | Search local Chrome browsing history exported by the History Trends Unlimited extension. |
-| [netnewswire-cli](mine/netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
-| [zotero-cli](mine/zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
+| [chrome-history-cli](skills/mine/chrome-history-cli/SKILL.md) | Search local Chrome browsing history exported by the History Trends Unlimited extension. |
+| [netnewswire-cli](skills/mine/netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
+| [zotero-cli](skills/mine/zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
 
 ### Vendored upstream skills
 
-Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them. To customize one, copy it into `mine/` and edit there: `link-skills` prefers `mine/` on a name clash, so your fork is what gets linked while the vendored copy keeps tracking upstream (see [handoff](#misc-mine)).
+Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source under `skills/vendor/`. Don't hand-edit these — the next sync overwrites them. To customize one, copy it into `skills/mine/` and edit there: `link-skills` prefers `mine/` on a name clash, so your fork is what gets linked while the vendored copy keeps tracking upstream (see [handoff](#misc-mine)).
 
 From [mattpocock/skills](https://github.com/mattpocock/skills):
 
 | Skill | Description |
 |-------|-------------|
-| [writing-fragments](mattpocock/writing-fragments/SKILL.md) | Grill the user for heterogeneous writing fragments, appended to one doc as raw material for a later article. |
-| [writing-shape](mattpocock/writing-shape/SKILL.md) | Shape a pile of raw material into an article — candidate openings, grow paragraph by paragraph, argue the format. |
-| [writing-beats](mattpocock/writing-beats/SKILL.md) | Assemble raw material as a narrative journey of beats, choose-your-own-adventure style. |
-| [writing-great-skills](mattpocock/writing-great-skills/SKILL.md) | Vocabulary and principles for writing predictable, well-formed skills. |
-| [decision-mapping](mattpocock/decision-mapping/SKILL.md) | Turn a loose idea into a sequenced map of investigation tickets, driven to resolution one at a time. |
-| [domain-modeling](mattpocock/domain-modeling/SKILL.md) | Build and sharpen a project's ubiquitous language; record architectural decisions as ADRs. |
-| [prototype](mattpocock/prototype/SKILL.md) | Build a throwaway prototype — a runnable terminal app or several UI variants — to flesh out a design. |
-| [to-prd](mattpocock/to-prd/SKILL.md) | Turn the current conversation into a PRD and publish it to the project issue tracker. |
-| [codebase-design](mattpocock/codebase-design/SKILL.md) | Shared vocabulary for designing deep modules — interfaces, seams, testability. |
-| [improve-codebase-architecture](mattpocock/improve-codebase-architecture/SKILL.md) | Scan a codebase for deepening opportunities, present as an HTML report, then grill the chosen one. |
-| [diagnosing-bugs](mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
-| [grill-me](mattpocock/grill-me/SKILL.md) | A relentless interview to sharpen a plan or design. |
-| [grilling](mattpocock/grilling/SKILL.md) | The underlying relentless-interview technique that grill-me/grill-with-docs build on. |
-| [grill-with-docs](mattpocock/grill-with-docs/SKILL.md) | Like grill-me, but also writes ADRs + a glossary as decisions crystallize. |
-| [handoff](mattpocock/handoff/SKILL.md) | Compact the conversation into a handoff doc for a fresh agent. Pristine upstream — overridden locally by [`mine/handoff`](#misc-mine). |
-| [setup-matt-pocock-skills](mattpocock/setup-matt-pocock-skills/SKILL.md) | Configure a repo for the engineering skills — issue tracker, triage labels, domain doc layout. Run once. |
+| [writing-fragments](skills/vendor/mattpocock/writing-fragments/SKILL.md) | Grill the user for heterogeneous writing fragments, appended to one doc as raw material for a later article. |
+| [writing-shape](skills/vendor/mattpocock/writing-shape/SKILL.md) | Shape a pile of raw material into an article — candidate openings, grow paragraph by paragraph, argue the format. |
+| [writing-beats](skills/vendor/mattpocock/writing-beats/SKILL.md) | Assemble raw material as a narrative journey of beats, choose-your-own-adventure style. |
+| [writing-great-skills](skills/vendor/mattpocock/writing-great-skills/SKILL.md) | Vocabulary and principles for writing predictable, well-formed skills. |
+| [decision-mapping](skills/vendor/mattpocock/decision-mapping/SKILL.md) | Turn a loose idea into a sequenced map of investigation tickets, driven to resolution one at a time. |
+| [domain-modeling](skills/vendor/mattpocock/domain-modeling/SKILL.md) | Build and sharpen a project's ubiquitous language; record architectural decisions as ADRs. |
+| [prototype](skills/vendor/mattpocock/prototype/SKILL.md) | Build a throwaway prototype — a runnable terminal app or several UI variants — to flesh out a design. |
+| [to-prd](skills/vendor/mattpocock/to-prd/SKILL.md) | Turn the current conversation into a PRD and publish it to the project issue tracker. |
+| [codebase-design](skills/vendor/mattpocock/codebase-design/SKILL.md) | Shared vocabulary for designing deep modules — interfaces, seams, testability. |
+| [improve-codebase-architecture](skills/vendor/mattpocock/improve-codebase-architecture/SKILL.md) | Scan a codebase for deepening opportunities, present as an HTML report, then grill the chosen one. |
+| [diagnosing-bugs](skills/vendor/mattpocock/diagnosing-bugs/SKILL.md) | Diagnosis loop for hard bugs and performance regressions. |
+| [grill-me](skills/vendor/mattpocock/grill-me/SKILL.md) | A relentless interview to sharpen a plan or design. |
+| [grilling](skills/vendor/mattpocock/grilling/SKILL.md) | The underlying relentless-interview technique that grill-me/grill-with-docs build on. |
+| [grill-with-docs](skills/vendor/mattpocock/grill-with-docs/SKILL.md) | Like grill-me, but also writes ADRs + a glossary as decisions crystallize. |
+| [handoff](skills/vendor/mattpocock/handoff/SKILL.md) | Compact the conversation into a handoff doc for a fresh agent. Pristine upstream — overridden locally by [`skills/mine/handoff`](#misc-mine). |
+| [setup-matt-pocock-skills](skills/vendor/mattpocock/setup-matt-pocock-skills/SKILL.md) | Configure a repo for the engineering skills — issue tracker, triage labels, domain doc layout. Run once. |
 
 From [tw93/Waza](https://github.com/tw93/Waza) (renamed `waza-*` for provenance):
 
 | Skill | Description |
 |-------|-------------|
-| [waza-learn](waza/waza-learn/SKILL.md) | Six-phase research workflow turning unfamiliar domains or source bundles into publish-ready output. |
-| [waza-design](waza/waza-design/SKILL.md) | Distinctive, production-grade UI for pages, components, typography, and screenshot-driven polish. |
-| [waza-read](waza/waza-read/SKILL.md) | Fetch and summarize URLs/PDFs, or convert them to clean Markdown for downstream work. |
+| [waza-learn](skills/vendor/waza/waza-learn/SKILL.md) | Six-phase research workflow turning unfamiliar domains or source bundles into publish-ready output. |
+| [waza-design](skills/vendor/waza/waza-design/SKILL.md) | Distinctive, production-grade UI for pages, components, typography, and screenshot-driven polish. |
+| [waza-read](skills/vendor/waza/waza-read/SKILL.md) | Fetch and summarize URLs/PDFs, or convert them to clean Markdown for downstream work. |
 
 From [JimLiu/baoyu-skills](https://github.com/JimLiu/baoyu-skills):
 
 | Skill | Description |
 |-------|-------------|
-| [baoyu-diagram](baoyu/baoyu-diagram/SKILL.md) | Create dark-themed SVG diagrams of any type — architecture, flowchart, sequence, mind map, timeline. |
+| [baoyu-diagram](skills/vendor/baoyu/baoyu-diagram/SKILL.md) | Create dark-themed SVG diagrams of any type — architecture, flowchart, sequence, mind map, timeline. |
 
 From [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills):
 
 | Skill | Description |
 |-------|-------------|
-| [karpathy-guidelines](karpathy/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes — surgical changes, surfaced assumptions, verifiable success criteria. |
+| [karpathy-guidelines](skills/vendor/karpathy/karpathy-guidelines/SKILL.md) | Behavioral guidelines to reduce common LLM coding mistakes — surgical changes, surfaced assumptions, verifiable success criteria. |
 
 From [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman):
 
 | Skill | Description |
 |-------|-------------|
-| [caveman](juliusbrussee/caveman/SKILL.md) | Ultra-compressed "caveman" communication mode — cuts tokens ~75% while keeping technical accuracy; intensity levels incl. wényán. |
+| [caveman](skills/vendor/juliusbrussee/caveman/SKILL.md) | Ultra-compressed "caveman" communication mode — cuts tokens ~75% while keeping technical accuracy; intensity levels incl. wényán. |
 
 ### Misc (mine)
 
@@ -98,14 +98,14 @@ My own skills that don't fit the categories above (not vendored — safe to edit
 
 | Skill | Description |
 |-------|-------------|
-| [handoff](mine/handoff/SKILL.md) | Fork of `mattpocock/handoff`, tweaked to save under `./docs/<timestamp>-handoff-<topic>.md`. **Takes priority** over the vendored copy in `link-skills`. Edit freely; not synced. |
-| [hyperframes](mine/hyperframes/SKILL.md) | Create video compositions, animations, title cards, captions, and scene transitions in HyperFrames HTML. |
-| [macos-icon](mine/macos-icon/SKILL.md) | Create, refine, validate, and export macOS app icons from raster artwork. |
-| [record-as-implement](mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
+| [handoff](skills/mine/handoff/SKILL.md) | Fork of `skills/vendor/mattpocock/handoff`, tweaked to save under `./docs/<timestamp>-handoff-<topic>.md`. **Takes priority** over the vendored copy in `link-skills`. Edit freely; not synced. |
+| [hyperframes](skills/mine/hyperframes/SKILL.md) | Create video compositions, animations, title cards, captions, and scene transitions in HyperFrames HTML. |
+| [macos-icon](skills/mine/macos-icon/SKILL.md) | Create, refine, validate, and export macOS app icons from raster artwork. |
+| [record-as-implement](skills/mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
 
 ## Installing into a project
 
-Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `link-skills` zsh function (source [`scripts/link-skills`](scripts/link-skills), symlinked into `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically (preferring `mine/` on a name clash), and the link name stays bare so it's discoverable:
+Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `skills/vendor/mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `link-skills` zsh function (source [`scripts/link-skills`](scripts/link-skills), symlinked into `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically (preferring `mine/` on a name clash), and the link name stays bare so it's discoverable:
 
 ```bash
 link-skills econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
@@ -119,11 +119,11 @@ Add `-g`/`--global` to link into your user-level dirs (`~/.claude/skills`, `~/.a
 link-skills -g writing-shape claude codex   # user-level, both agents
 ```
 
-Or symlink manually — point at the skill's real `<group>/<name>` path but keep the link name bare:
+Or symlink manually — point at the skill's real `skills/mine/<name>` or `skills/vendor/<source>/<name>` path but keep the link name bare:
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s ~/skills/mattpocock/writing-shape ~/.claude/skills/writing-shape
+ln -s ~/skills/skills/vendor/mattpocock/writing-shape ~/.claude/skills/writing-shape
 ```
 
 In a fresh clone, install the function itself by symlinking it onto your `fpath`:
@@ -167,7 +167,7 @@ Helper scripts live alongside `SKILL.md` (e.g. `scripts/`, `references/`).
 Per-skill setup notes:
 
 - **netnewswire-cli** — macOS + NetNewsWire installed; uses AppleScript + bash, no extra deps.
-- **zotero-cli** — Python 3.10+, `zotero-mcp-server` installed in the same interpreter, Zotero desktop running with the local API enabled. See [`mine/zotero-cli/README.md`](mine/zotero-cli/README.md) for setup.
+- **zotero-cli** — Python 3.10+, `zotero-mcp-server` installed in the same interpreter, Zotero desktop running with the local API enabled. See [`skills/mine/zotero-cli/README.md`](skills/mine/zotero-cli/README.md) for setup.
 - **matlab-econ-model-estimator** — MATLAB.
 
 ## Credits

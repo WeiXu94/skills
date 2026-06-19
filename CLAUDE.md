@@ -1,17 +1,20 @@
 # CLAUDE.md
 
-Collection of Claude Code skills, grouped by source:
+Collection of Claude Code skills, all under `skills/`:
 
-- `mine/` — my own skills.
-- `mattpocock/`, `waza/`, `baoyu/`, `karpathy/`, `juliusbrussee/` — skills
-  vendored from upstream repos (one folder per source).
+- `skills/mine/` — my own skills.
+- `skills/vendor/<source>/` — skills vendored from upstream repos, one folder
+  per source (`skills/vendor/mattpocock/`, `skills/vendor/waza/`,
+  `skills/vendor/baoyu/`, `skills/vendor/karpathy/`, `skills/vendor/juliusbrussee/`,
+  `skills/vendor/badlogic/`, ...).
 
-Each skill is a `<group>/<name>/` dir with `SKILL.md` (plus optional `scripts/`,
-`references/`). A skill's `name:` must equal its immediate dir name (`<name>`);
-the `<group>` level does not affect it. Claude discovers skills only one level
-deep, so consume them via per-skill symlinks (`link-skills <name>` for the current
-project, `link-skills -g <name>` for user-level `~/.claude` + `~/.agents`; source
-`scripts/link-skills`, symlinked into `~/.zsh_functions/`), not by pointing
+Each skill is a `<name>/` dir with `SKILL.md` (plus optional `scripts/`,
+`references/`), sitting in `skills/mine/<name>` or `skills/vendor/<source>/<name>`.
+A skill's `name:` must equal its immediate dir name (`<name>`); the enclosing
+`mine`/`vendor/<source>` levels do not affect it. Claude discovers skills only one
+level deep, so consume them via per-skill symlinks (`link-skills <name>` for the
+current project, `link-skills -g <name>` for user-level `~/.claude` + `~/.agents`;
+source `scripts/link-skills`, symlinked into `~/.zsh_functions/`), not by pointing
 `.claude/skills` at a group folder.
 
 ## Profiles
@@ -43,7 +46,7 @@ one file per profile under `profiles/<name>`, listing skill names one per line
 Some skills are pulled from upstream repos, listed in `upstream-manifest` (data).
 `scripts/sync-upstream-skills.sh` (logic) reads it, partial+sparse-fetches only
 the listed folders into `~/.cache/upstream-skills`, and copies each into
-`<group>/<name>/` here.
+`skills/vendor/<source>/<name>/` here.
 
 - Add/remove a skill or source: edit `upstream-manifest`, not the script.
 - Quick add by URL: `scripts/add-skill-from-url <github-url-to-SKILL.md>` parses
@@ -58,8 +61,8 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 - Sync rewrites each copied `SKILL.md` `name:` to match its dest dir, so you may
   rename freely (e.g. `learn` -> `waza-learn`).
 - Don't hand-edit a vendored skill dir; the next sync overwrites it. To
-  customize one, copy it into `mine/`; `link-skills` prefers `mine/` on a name
-  clash, so the vendored copy keeps tracking upstream while your fork is linked.
+  customize one, copy it into `skills/mine/`; `link-skills` prefers `mine/` on a
+  name clash, so the vendored copy keeps tracking upstream while your fork is linked.
 
 Vendored skills are NOT auto-synced; run `scripts/sync-upstream-skills.sh` (all)
 or `scripts/add-skill-from-url <url>` (one) when you want to pull upstream.
