@@ -134,13 +134,13 @@ ln -s "$PWD/scripts/link-skills" ~/.zsh_functions/link-skills   # then: autoload
 
 ### Profiles
 
-To toggle a whole *set* of skills at once — e.g. an econ-research set vs a programming set — use **profiles**. A profile is a file under [`profiles/`](profiles/) listing skill names (one per line); [`scripts/use-skill-profile`](scripts/use-skill-profile) links the lot via `link-skills`. The `common` profile is always unioned in.
+To toggle a whole *set* of skills at once — e.g. an econ-research set vs a programming set — use **profiles**. A profile is a file under [`profiles/`](profiles/) listing skill names (one per line); [`scripts/use-skill-profile`](scripts/use-skill-profile) links the lot via `link-skills`. Profiles are independent — nothing is auto-unioned. The `global` profile holds cross-cutting skills; apply it once at user level for skills you want everywhere.
 
 ```bash
-use-skill-profile econ                 # this project: econ + common (REPLACE — clears old links first)
-use-skill-profile programming econ     # union both profiles (+ common)
+use-skill-profile -g global            # user-level (~/.claude + ~/.agents): everywhere-skills
+use-skill-profile econ                 # this project: econ only (REPLACE — clears old links first)
+use-skill-profile programming econ     # union both profiles
 use-skill-profile --add lit-review-assistant  # STACK a profile onto current links (no clear)
-use-skill-profile -g programming       # user-level default set (~/.claude + ~/.agents)
 clear-skills                     # toggle every linked skill off
 ```
 

@@ -22,16 +22,17 @@ source `scripts/link-skills`, symlinked into `~/.zsh_functions/`), not by pointi
 A *profile* is a named set of skills you toggle into a project (or user-level)
 with one command — e.g. an `econ` set vs a `programming` set. Profiles are data:
 one file per profile under `profiles/<name>`, listing skill names one per line
-(`#` comments + blank lines ignored). The `common` profile is always unioned in.
+(`#` comments + blank lines ignored). Profiles are independent — nothing is
+auto-unioned. The `global` profile holds cross-cutting skills; apply it once at
+user level (`use-skill-profile -g global`) for skills you want everywhere.
 
 `scripts/use-skill-profile` (logic, a sourced zsh function symlinked into
 `~/.zsh_functions/`) reads the file(s) and links each skill via `link-skills`:
 
-    use-skill-profile econ                 # project: econ + common (REPLACE: clears old links first)
-    use-skill-profile programming econ     # union both profiles (+ common)
+    use-skill-profile -g global            # user-level (~/.claude + ~/.agents): everywhere-skills
+    use-skill-profile econ                 # project: econ only (REPLACE: clears old links first)
+    use-skill-profile programming econ     # project: union both profiles
     use-skill-profile --add <profile>      # STACK onto current links (no clear)
-    use-skill-profile -g programming       # user-level (~/.claude + ~/.agents) default set
-    use-skill-profile econ --no-common     # skip the common set
     clear-skills                     # toggle everything off (removes ~/skills symlinks only)
 
 - Edit profile membership: change the `profiles/<name>` files, not the script.

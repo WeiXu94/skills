@@ -3,12 +3,13 @@
 # listing skill names one per line (# comments and blank lines ignored). Skill resolution is
 # delegated to link-skills, so a bare name resolves across source groups (mine/ wins on a clash).
 #
-# The `common` profile, if it exists, is ALWAYS unioned in (disable with --no-common).
+# Profiles are independent — nothing is auto-unioned. Apply the `global` profile
+# at user level (`use-skill-profile -g global`) for skills you want everywhere;
+# project profiles like econ/programming link only the skills they list.
 #
-# Usage: use-skill-profile [-g|--global] [--add] [--no-common] <profile> [<profile>...] [-- agent ...]
+# Usage: use-skill-profile [-g|--global] [--add] <profile> [<profile>...] [-- agent ...]
 #   -g, --global    link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
 #   --add           STACK onto whatever is already linked (skip the clear step)
-#   --no-common     do not auto-include the `common` profile
 #   -- agent ...    target agents (default: claude codex)
 #
 # Default (no --add) is REPLACE: existing ~/skills symlinks are cleared first, so switching
@@ -16,26 +17,24 @@
 # linked manually with link-skills — re-add them, or list them in a profile.
 #
 # Examples:
-#   use-skill-profile econ                       # project: econ + common
-#   use-skill-profile programming                # project: programming + common
-#   use-skill-profile programming econ           # union both (+ common)
+#   use-skill-profile -g global                  # user-level: skills you want everywhere
+#   use-skill-profile econ                       # project: econ only
+#   use-skill-profile programming econ           # project: union both
 #   use-skill-profile --add lit-review-assistant # (a profile named that) stack without clearing
-#   use-skill-profile -g programming             # user-level default set
 #   use-skill-profile econ -- claude             # only the claude agent dir
 setopt local_options null_glob
 
 local base="$PWD"
-integer add=0 nocommon=0
+integer add=0
 local -a profiles agents
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -g|--global) base="$HOME"; shift ;;
         --add)       add=1; shift ;;
-        --no-common) nocommon=1; shift ;;
         --)          shift; agents=("$@"); break ;;
         -h|--help)
-            echo "Usage: use-skill-profile [-g|--global] [--add] [--no-common] <profile>... [-- agent ...]"
-            echo "Profiles live in ~/skills/profiles/. The 'common' profile is always included (--no-common to skip)."
+            echo "Usage: use-skill-profile [-g|--global] [--add] <profile>... [-- agent ...]"
+            echo "Profiles live in ~/skills/profiles/. Apply 'global' at user level (-g) for everywhere-skills."
             echo "Default is REPLACE (clears existing ~/skills links first); --add stacks instead."
             return 0 ;;
         -*) echo "Error: unknown option '$1'"; return 1 ;;
@@ -45,14 +44,9 @@ done
 (( ${#agents} )) || agents=(claude codex)
 
 if (( ${#profiles} == 0 )); then
-    echo "Usage: use-skill-profile [-g|--global] [--add] [--no-common] <profile>... [-- agent ...]"
+    echo "Usage: use-skill-profile [-g|--global] [--add] <profile>... [-- agent ...]"
     echo "Available profiles:"; print -l ~/skills/profiles/*(:t) 2>/dev/null | sed 's/^/  /'
     return 1
-fi
-
-# Always union in `common` (unless suppressed or already named).
-if (( ! nocommon )) && [[ -f "$HOME/skills/profiles/common" ]] && (( ${profiles[(Ie)common]} == 0 )); then
-    profiles+=(common)
 fi
 
 # Collect (deduped) skill names from each profile file.

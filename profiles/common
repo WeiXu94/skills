@@ -1,6 +1,0 @@
-# common — cross-cutting skills auto-included by every profile.
-# (Disable per-invocation with: use-profile <name> --no-common)
-caveman
-grilling
-handoff
-record-as-implement

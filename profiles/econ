@@ -1,5 +1,5 @@
-# econ — economics research skill set.
-# (common skills auto-included; add writing-shape/fragments here if you want them.)
+# econ — economics research skill set (links only what's listed below).
+# Cross-cutting skills live in the `global` profile, applied separately at user level.
 econ-paper-writing
 econ-paper-writing-fragments
 econ-paper-writing-shape

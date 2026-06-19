@@ -1,5 +1,6 @@
-# programming — software-engineering skill set.
-# (caveman/grilling/handoff/record-as-implement live in `common`, auto-included.)
+# programming — software-engineering skill set (links only what's listed below).
+# Cross-cutting skills (caveman/grilling/handoff/record-as-implement) live in the
+# `global` profile, applied separately at user level.
 codebase-design
 diagnosing-bugs
 domain-modeling
