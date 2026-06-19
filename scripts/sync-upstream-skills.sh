@@ -18,6 +18,11 @@
 # sync — checked with a cheap `git ls-remote` probe (no objects downloaded) — so
 # an unchanged upstream costs just the probe, not a full re-fetch.
 #
+# If a skill's upstream src path no longer exists (upstream moved/renamed it),
+# the sync keeps the last vendored copy untouched, warns, lists it in an
+# end-of-run summary, and exits 3 — fix that skill's src (3rd field) in the
+# manifest and re-sync. (dest unchanged => same folder + skill name downstream.)
+#
 # Edit the manifest (not this script) to add/remove skills or sources.
 
 set -euo pipefail
@@ -114,11 +119,15 @@ done
 
 # --- 2. copy each skill, flat, and normalize its name: field ---------------
 echo "==> Copying into $VENDOR_DIR"
+MISSING=()   # skills whose upstream src path no longer exists (likely moved/renamed)
 for entry in "${SKILLS[@]}"; do
   read -r key src dst <<<"$entry"
   mirror="$CACHE_ROOT/$key"
   if [ ! -d "$mirror/$src" ]; then
-    echo "!!  [$key] upstream path not found, skipping: $src"
+    echo "!!  [$key] upstream path not found: $src"
+    echo "!!      did upstream move/rename it? update this skill's src (3rd field) in $MANIFEST"
+    echo "!!      kept existing skills/vendor/$key/$dst/ as-is (last good copy, not refreshed)"
+    MISSING+=("$key  $src  -> skills/vendor/$key/$dst")
     continue
   fi
   echo "    [$key] $src -> skills/vendor/$key/$dst/"
@@ -137,5 +146,17 @@ for entry in "${SKILLS[@]}"; do
   [ "$STAGE" = 1 ] && git -C "$REPO_ROOT" add "skills/vendor/$key/$dst"
 done
 
-echo "==> Done.${STAGE:+}"
+echo "==> Done."
 [ "$STAGE" = 1 ] && echo "    (dest folders staged)" || echo "    Review with: git -C \"$REPO_ROOT\" status"
+
+# Surface any skipped skills loudly at the end (easy to miss mid-log) and exit
+# non-zero so callers/automation notice the manifest needs fixing.
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo
+  echo "!!  WARNING: ${#MISSING[@]} skill(s) had NO matching upstream path and were NOT updated:"
+  for m in "${MISSING[@]}"; do echo "!!    $m"; done
+  echo "!!  Likely an upstream move/rename — fix each src path (3rd field) in:"
+  echo "!!    $MANIFEST"
+  echo "!!  then re-run the sync. (dest unchanged => same folder + skill name, nothing downstream breaks)"
+  exit 3
+fi
