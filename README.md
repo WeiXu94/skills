@@ -132,6 +132,20 @@ In a fresh clone, install the function itself by symlinking it onto your `fpath`
 ln -s "$PWD/scripts/add-skill" ~/.zsh_functions/add-skill   # then: autoload -Uz add-skill
 ```
 
+### Profiles
+
+To toggle a whole *set* of skills at once — e.g. an econ-research set vs a programming set — use **profiles**. A profile is a file under [`profiles/`](profiles/) listing skill names (one per line); [`scripts/use-profile`](scripts/use-profile) links the lot via `add-skill`. The `common` profile is always unioned in.
+
+```bash
+use-profile econ                 # this project: econ + common (REPLACE — clears old links first)
+use-profile programming econ     # union both profiles (+ common)
+use-profile --add lit-review-assistant  # STACK a profile onto current links (no clear)
+use-profile -g programming       # user-level default set (~/.claude + ~/.agents)
+clear-skills                     # toggle every linked skill off
+```
+
+Default is *replace* (switching profiles leaves the project clean); `--add` stacks instead. Edit membership in the `profiles/<name>` files, not the script. Install the functions the same way: `ln -s "$PWD/scripts/use-profile" ~/.zsh_functions/use-profile` (and likewise `clear-skills`).
+
 ## Skill format
 
 Each skill is a folder with a `SKILL.md` that starts with frontmatter:

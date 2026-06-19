@@ -14,6 +14,30 @@ project, `add-skill -g <name>` for user-level `~/.claude` + `~/.agents`; source
 `scripts/add-skill`, symlinked into `~/.zsh_functions/`), not by pointing
 `.claude/skills` at a group folder.
 
+## Profiles
+
+A *profile* is a named set of skills you toggle into a project (or user-level)
+with one command — e.g. an `econ` set vs a `programming` set. Profiles are data:
+one file per profile under `profiles/<name>`, listing skill names one per line
+(`#` comments + blank lines ignored). The `common` profile is always unioned in.
+
+`scripts/use-profile` (logic, a sourced zsh function symlinked into
+`~/.zsh_functions/`) reads the file(s) and links each skill via `add-skill`:
+
+    use-profile econ                 # project: econ + common (REPLACE: clears old links first)
+    use-profile programming econ     # union both profiles (+ common)
+    use-profile --add <profile>      # STACK onto current links (no clear)
+    use-profile -g programming       # user-level (~/.claude + ~/.agents) default set
+    use-profile econ --no-common     # skip the common set
+    clear-skills                     # toggle everything off (removes ~/skills symlinks only)
+
+- Edit profile membership: change the `profiles/<name>` files, not the script.
+- Default is REPLACE so switching profiles leaves a project clean; this also
+  drops one-off skills you linked manually with `add-skill` (re-add, or list them
+  in a profile). `--add` preserves existing links.
+- `clear-skills` only removes symlinks pointing into `~/skills`; real dirs and
+  foreign symlinks are left alone.
+
 ## Vendored skills
 
 Some skills are pulled from upstream repos, listed in `upstream-manifest` (data).
