@@ -9,9 +9,9 @@ Collection of Claude Code skills, grouped by source:
 Each skill is a `<group>/<name>/` dir with `SKILL.md` (plus optional `scripts/`,
 `references/`). A skill's `name:` must equal its immediate dir name (`<name>`);
 the `<group>` level does not affect it. Claude discovers skills only one level
-deep, so consume them via per-skill symlinks (`add-skill <name>` for the current
-project, `add-skill -g <name>` for user-level `~/.claude` + `~/.agents`; source
-`scripts/add-skill`, symlinked into `~/.zsh_functions/`), not by pointing
+deep, so consume them via per-skill symlinks (`link-skills <name>` for the current
+project, `link-skills -g <name>` for user-level `~/.claude` + `~/.agents`; source
+`scripts/link-skills`, symlinked into `~/.zsh_functions/`), not by pointing
 `.claude/skills` at a group folder.
 
 ## Profiles
@@ -21,19 +21,19 @@ with one command — e.g. an `econ` set vs a `programming` set. Profiles are dat
 one file per profile under `profiles/<name>`, listing skill names one per line
 (`#` comments + blank lines ignored). The `common` profile is always unioned in.
 
-`scripts/use-profile` (logic, a sourced zsh function symlinked into
-`~/.zsh_functions/`) reads the file(s) and links each skill via `add-skill`:
+`scripts/use-skill-profile` (logic, a sourced zsh function symlinked into
+`~/.zsh_functions/`) reads the file(s) and links each skill via `link-skills`:
 
-    use-profile econ                 # project: econ + common (REPLACE: clears old links first)
-    use-profile programming econ     # union both profiles (+ common)
-    use-profile --add <profile>      # STACK onto current links (no clear)
-    use-profile -g programming       # user-level (~/.claude + ~/.agents) default set
-    use-profile econ --no-common     # skip the common set
+    use-skill-profile econ                 # project: econ + common (REPLACE: clears old links first)
+    use-skill-profile programming econ     # union both profiles (+ common)
+    use-skill-profile --add <profile>      # STACK onto current links (no clear)
+    use-skill-profile -g programming       # user-level (~/.claude + ~/.agents) default set
+    use-skill-profile econ --no-common     # skip the common set
     clear-skills                     # toggle everything off (removes ~/skills symlinks only)
 
 - Edit profile membership: change the `profiles/<name>` files, not the script.
 - Default is REPLACE so switching profiles leaves a project clean; this also
-  drops one-off skills you linked manually with `add-skill` (re-add, or list them
+  drops one-off skills you linked manually with `link-skills` (re-add, or list them
   in a profile). `--add` preserves existing links.
 - `clear-skills` only removes symlinks pointing into `~/skills`; real dirs and
   foreign symlinks are left alone.
@@ -53,7 +53,7 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 - Sync rewrites each copied `SKILL.md` `name:` to match its dest dir, so you may
   rename freely (e.g. `learn` -> `waza-learn`).
 - Don't hand-edit a vendored skill dir; the next sync overwrites it. To
-  customize one, copy it into `mine/`; `add-skill` prefers `mine/` on a name
+  customize one, copy it into `mine/`; `link-skills` prefers `mine/` on a name
   clash, so the vendored copy keeps tracking upstream while your fork is linked.
 
 ## Hook

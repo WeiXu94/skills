@@ -1,14 +1,14 @@
-# add-skill: symlink a skill into a project (or user-level) agent dir(s), by name.
+# link-skills: symlink a skill into a project (or user-level) agent dir(s), by name.
 # Skills live in ~/skills/ grouped by source: mine/<name>, mattpocock/<name>,
 # waza/<name>, baoyu/<name>, ...  You give only the NAME; the source group is
 # resolved automatically (top level or one group folder deep).
-# Usage: add-skill [-g|--global] <skill-name> [agent ...]
+# Usage: link-skills [-g|--global] <skill-name> [agent ...]
 #   -g, --global   link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
 # Agents: pi, codex, opencode -> .agents/skills | claude -> .claude/skills
 # Examples:
-#   add-skill netnewswire-cli                    # project, defaults to claude + codex
-#   add-skill writing-shape claude               # project, single agent
-#   add-skill -g econ-paper-writing claude codex # user-level, both agents
+#   link-skills netnewswire-cli                    # project, defaults to claude + codex
+#   link-skills writing-shape claude               # project, single agent
+#   link-skills -g econ-paper-writing claude codex # user-level, both agents
 setopt local_options null_glob
 
 # Scope: default to the current project; -g/--global links into ~/ instead.
@@ -17,7 +17,7 @@ while [[ "$1" == -* ]]; do
     case "$1" in
         -g|--global) base="$HOME"; shift ;;
         -h|--help)
-            echo "Usage: add-skill [-g|--global] <skill-name> [agent ...]"
+            echo "Usage: link-skills [-g|--global] <skill-name> [agent ...]"
             echo "  -g, --global   link into ~/ (user-level) instead of the current project"
             echo "Agents: pi, codex, opencode (all -> .agents/skills), claude (-> .claude/skills)"
             return 0 ;;
@@ -26,7 +26,7 @@ while [[ "$1" == -* ]]; do
 done
 
 if [[ $# -lt 1 ]]; then
-    echo "Usage: add-skill [-g|--global] <skill-name> [agent ...]"
+    echo "Usage: link-skills [-g|--global] <skill-name> [agent ...]"
     echo "Agents: pi, codex, opencode (all -> .agents/skills), claude (-> .claude/skills)"
     echo "Default agents when none given: claude codex"
     return 1

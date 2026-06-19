@@ -43,7 +43,7 @@ The three `econ-paper-writing*` skills form a pipeline: `econ-paper-writing` is 
 
 ### Vendored upstream skills
 
-Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them. To customize one, copy it into `mine/` and edit there: `add-skill` prefers `mine/` on a name clash, so your fork is what gets linked while the vendored copy keeps tracking upstream (see [handoff](#misc-mine)).
+Pulled from other authors' repos and kept in sync via [`upstream-manifest`](upstream-manifest) + [`scripts/sync-upstream-skills.sh`](scripts/sync-upstream-skills.sh), one folder per source. Don't hand-edit these — the next sync overwrites them. To customize one, copy it into `mine/` and edit there: `link-skills` prefers `mine/` on a name clash, so your fork is what gets linked while the vendored copy keeps tracking upstream (see [handoff](#misc-mine)).
 
 From [mattpocock/skills](https://github.com/mattpocock/skills):
 
@@ -98,25 +98,25 @@ My own skills that don't fit the categories above (not vendored — safe to edit
 
 | Skill | Description |
 |-------|-------------|
-| [handoff](mine/handoff/SKILL.md) | Fork of `mattpocock/handoff`, tweaked to save under `./docs/<timestamp>-handoff-<topic>.md`. **Takes priority** over the vendored copy in `add-skill`. Edit freely; not synced. |
+| [handoff](mine/handoff/SKILL.md) | Fork of `mattpocock/handoff`, tweaked to save under `./docs/<timestamp>-handoff-<topic>.md`. **Takes priority** over the vendored copy in `link-skills`. Edit freely; not synced. |
 | [hyperframes](mine/hyperframes/SKILL.md) | Create video compositions, animations, title cards, captions, and scene transitions in HyperFrames HTML. |
 | [macos-icon](mine/macos-icon/SKILL.md) | Create, refine, validate, and export macOS app icons from raster artwork. |
 | [record-as-implement](mine/record-as-implement/SKILL.md) | Implement a spec while keeping a session notes file of off-spec decisions, deviations, and tradeoffs. |
 
 ## Installing into a project
 
-Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `add-skill` zsh function (source [`scripts/add-skill`](scripts/add-skill), symlinked into `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically (preferring `mine/` on a name clash), and the link name stays bare so it's discoverable:
+Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `mattpocock/` can't be pointed at directly — each skill must sit one level under the skills dir. The `link-skills` zsh function (source [`scripts/link-skills`](scripts/link-skills), symlinked into `~/.zsh_functions/`) symlinks a skill into the current project by name; the source group is resolved automatically (preferring `mine/` on a name clash), and the link name stays bare so it's discoverable:
 
 ```bash
-add-skill econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
-add-skill writing-shape claude         # single agent
-add-skill waza-design claude codex pi  # multiple agents at once
+link-skills econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
+link-skills writing-shape claude         # single agent
+link-skills waza-design claude codex pi  # multiple agents at once
 ```
 
 Add `-g`/`--global` to link into your user-level dirs (`~/.claude/skills`, `~/.agents/skills`) instead of the current project:
 
 ```bash
-add-skill -g writing-shape claude codex   # user-level, both agents
+link-skills -g writing-shape claude codex   # user-level, both agents
 ```
 
 Or symlink manually — point at the skill's real `<group>/<name>` path but keep the link name bare:
@@ -129,22 +129,22 @@ ln -s ~/skills/mattpocock/writing-shape ~/.claude/skills/writing-shape
 In a fresh clone, install the function itself by symlinking it onto your `fpath`:
 
 ```bash
-ln -s "$PWD/scripts/add-skill" ~/.zsh_functions/add-skill   # then: autoload -Uz add-skill
+ln -s "$PWD/scripts/link-skills" ~/.zsh_functions/link-skills   # then: autoload -Uz link-skills
 ```
 
 ### Profiles
 
-To toggle a whole *set* of skills at once — e.g. an econ-research set vs a programming set — use **profiles**. A profile is a file under [`profiles/`](profiles/) listing skill names (one per line); [`scripts/use-profile`](scripts/use-profile) links the lot via `add-skill`. The `common` profile is always unioned in.
+To toggle a whole *set* of skills at once — e.g. an econ-research set vs a programming set — use **profiles**. A profile is a file under [`profiles/`](profiles/) listing skill names (one per line); [`scripts/use-skill-profile`](scripts/use-skill-profile) links the lot via `link-skills`. The `common` profile is always unioned in.
 
 ```bash
-use-profile econ                 # this project: econ + common (REPLACE — clears old links first)
-use-profile programming econ     # union both profiles (+ common)
-use-profile --add lit-review-assistant  # STACK a profile onto current links (no clear)
-use-profile -g programming       # user-level default set (~/.claude + ~/.agents)
+use-skill-profile econ                 # this project: econ + common (REPLACE — clears old links first)
+use-skill-profile programming econ     # union both profiles (+ common)
+use-skill-profile --add lit-review-assistant  # STACK a profile onto current links (no clear)
+use-skill-profile -g programming       # user-level default set (~/.claude + ~/.agents)
 clear-skills                     # toggle every linked skill off
 ```
 
-Default is *replace* (switching profiles leaves the project clean); `--add` stacks instead. Edit membership in the `profiles/<name>` files, not the script. Install the functions the same way: `ln -s "$PWD/scripts/use-profile" ~/.zsh_functions/use-profile` (and likewise `clear-skills`).
+Default is *replace* (switching profiles leaves the project clean); `--add` stacks instead. Edit membership in the `profiles/<name>` files, not the script. Install the functions the same way: `ln -s "$PWD/scripts/use-skill-profile" ~/.zsh_functions/use-skill-profile` (and likewise `clear-skills`).
 
 ## Skill format
 

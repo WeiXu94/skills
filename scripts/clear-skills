@@ -1,6 +1,6 @@
 # clear-skills: remove skill symlinks (those pointing into ~/skills) from a project's
 # agent skill dirs — i.e. toggle every linked skill OFF. Real dirs and foreign symlinks
-# are left untouched. Pairs with use-profile (which calls this for its "replace" step).
+# are left untouched. Pairs with use-skill-profile (which calls this for its "replace" step).
 # Usage: clear-skills [-g|--global] [-- agent ...]
 #   -g, --global    operate on ~/ (user-level) instead of $PWD
 #   -- agent ...    target agents (default: claude codex); pi|codex|opencode -> .agents/skills, claude -> .claude/skills

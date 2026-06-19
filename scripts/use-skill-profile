@@ -1,11 +1,11 @@
-# use-profile: link a named SET of skills (a "profile") into a project (or -g user-level),
+# use-skill-profile: link a named SET of skills (a "profile") into a project (or -g user-level),
 # toggling the whole set with one command. A profile is a file under ~/skills/profiles/<name>
 # listing skill names one per line (# comments and blank lines ignored). Skill resolution is
-# delegated to add-skill, so a bare name resolves across source groups (mine/ wins on a clash).
+# delegated to link-skills, so a bare name resolves across source groups (mine/ wins on a clash).
 #
 # The `common` profile, if it exists, is ALWAYS unioned in (disable with --no-common).
 #
-# Usage: use-profile [-g|--global] [--add] [--no-common] <profile> [<profile>...] [-- agent ...]
+# Usage: use-skill-profile [-g|--global] [--add] [--no-common] <profile> [<profile>...] [-- agent ...]
 #   -g, --global    link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
 #   --add           STACK onto whatever is already linked (skip the clear step)
 #   --no-common     do not auto-include the `common` profile
@@ -13,15 +13,15 @@
 #
 # Default (no --add) is REPLACE: existing ~/skills symlinks are cleared first, so switching
 # profiles leaves the project clean. Note: --add aside, this also removes one-off skills you
-# linked manually with add-skill — re-add them, or list them in a profile.
+# linked manually with link-skills — re-add them, or list them in a profile.
 #
 # Examples:
-#   use-profile econ                       # project: econ + common
-#   use-profile programming                # project: programming + common
-#   use-profile programming econ           # union both (+ common)
-#   use-profile --add lit-review-assistant # (a profile named that) stack without clearing
-#   use-profile -g programming             # user-level default set
-#   use-profile econ -- claude             # only the claude agent dir
+#   use-skill-profile econ                       # project: econ + common
+#   use-skill-profile programming                # project: programming + common
+#   use-skill-profile programming econ           # union both (+ common)
+#   use-skill-profile --add lit-review-assistant # (a profile named that) stack without clearing
+#   use-skill-profile -g programming             # user-level default set
+#   use-skill-profile econ -- claude             # only the claude agent dir
 setopt local_options null_glob
 
 local base="$PWD"
@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
         --no-common) nocommon=1; shift ;;
         --)          shift; agents=("$@"); break ;;
         -h|--help)
-            echo "Usage: use-profile [-g|--global] [--add] [--no-common] <profile>... [-- agent ...]"
+            echo "Usage: use-skill-profile [-g|--global] [--add] [--no-common] <profile>... [-- agent ...]"
             echo "Profiles live in ~/skills/profiles/. The 'common' profile is always included (--no-common to skip)."
             echo "Default is REPLACE (clears existing ~/skills links first); --add stacks instead."
             return 0 ;;
@@ -45,7 +45,7 @@ done
 (( ${#agents} )) || agents=(claude codex)
 
 if (( ${#profiles} == 0 )); then
-    echo "Usage: use-profile [-g|--global] [--add] [--no-common] <profile>... [-- agent ...]"
+    echo "Usage: use-skill-profile [-g|--global] [--add] [--no-common] <profile>... [-- agent ...]"
     echo "Available profiles:"; print -l ~/skills/profiles/*(:t) 2>/dev/null | sed 's/^/  /'
     return 1
 fi
@@ -85,9 +85,9 @@ if (( ! add )); then
     clear-skills "${gflag[@]}" -- "${agents[@]}"
 fi
 
-# Link each skill via add-skill (reuses its name resolution + clash handling).
+# Link each skill via link-skills (reuses its name resolution + clash handling).
 for s in "${skills[@]}"; do
-    add-skill "${gflag[@]}" "$s" "${agents[@]}"
+    link-skills "${gflag[@]}" "$s" "${agents[@]}"
 done
 
 echo "Applied profile(s): ${profiles[*]}  ->  ${#skills} skill(s), agents: ${agents[*]}  (base: $base)"
