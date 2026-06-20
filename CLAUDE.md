@@ -18,6 +18,12 @@ source `scripts/link-skills`, symlinked into `~/.zsh_functions/`), not by pointi
 `.claude/skills` at a group folder. Zsh tab-completion for `link-skills` lives in
 `scripts/_link-skills` (symlink onto `fpath`; needs `compinit`).
 
+By default skills link into both agents (`claude` -> `.claude/skills`,
+`codex`/`pi`/`opencode` -> `.agents/skills`). Target specific ones with `--agent`,
+which all three scripts (`link-skills`, `clear-skills`, `use-skill-profile`) accept.
+It takes multiple values — comma/slash-separated, repeatable, or both:
+`--agent claude`, `--agent claude,codex`, `--agent claude --agent codex`.
+
 ## Profiles
 
 A *profile* is a named set of skills you toggle into a project (or user-level)
@@ -34,7 +40,9 @@ user level (`use-skill-profile -g global`) for skills you want everywhere.
     use-skill-profile econ                 # project: econ only (REPLACE: clears old links first)
     use-skill-profile programming econ     # project: union both profiles
     use-skill-profile --add <profile>      # STACK onto current links (no clear)
+    use-skill-profile econ --agent claude  # project: econ, only the claude agent dir
     clear-skills                     # toggle everything off (removes ~/skills symlinks only)
+    clear-skills --agent codex       # clear only the codex/.agents links
 
 - Edit profile membership: change the `profiles/<name>` files, not the script.
 - Default is REPLACE so switching profiles leaves a project clean; this also

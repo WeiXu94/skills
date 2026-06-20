@@ -2,38 +2,55 @@
 # Skills live under ~/skills/skills/: mine in mine/<name>, vendored ones in
 # vendor/<source>/<name> (e.g. vendor/mattpocock/<name>). You give only the NAME;
 # the location is resolved automatically (mine/ or one vendor source deep).
-# Usage: link-skills [-g|--global] <skill-name> [agent ...]
-#   -g, --global   link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
+# Usage: link-skills [-g|--global] [--agent <a>[,<b>...]]... <skill-name>
+#   -g, --global    link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
+#   --agent <list>  target agent(s); comma- or slash-separated, and/or repeated
+#                   (e.g. --agent claude,codex  or  --agent claude --agent codex)
 # Agents: pi, codex, opencode -> .agents/skills | claude -> .claude/skills
+# Default agents when none given: claude codex
 # Examples:
-#   link-skills netnewswire-cli                    # project, defaults to claude + codex
-#   link-skills writing-shape claude               # project, single agent
-#   link-skills -g econ-paper-writing claude codex # user-level, both agents
+#   link-skills netnewswire-cli                       # project, defaults to claude + codex
+#   link-skills --agent claude writing-shape          # project, single agent
+#   link-skills -g --agent claude,codex econ-paper-writing  # user-level, both agents
 setopt local_options null_glob
 
-# Scope: default to the current project; -g/--global links into ~/ instead.
+# Parse all args in one pass: -g/--global, --agent (repeatable, comma/slash list),
+# and the sole bare word is the skill name. Agents come only via --agent.
 local base="$PWD"
-while [[ "$1" == -* ]]; do
+local skill_name=""
+local -a agents
+while [[ $# -gt 0 ]]; do
     case "$1" in
         -g|--global) base="$HOME"; shift ;;
+        --agent)
+            shift
+            [[ $# -gt 0 ]] || { echo "Error: --agent needs a value"; return 1; }
+            agents+=(${(s:,:)${1//\//,}}); shift ;;
+        --agent=*)
+            agents+=(${(s:,:)${${1#--agent=}//\//,}}); shift ;;
         -h|--help)
-            echo "Usage: link-skills [-g|--global] <skill-name> [agent ...]"
-            echo "  -g, --global   link into ~/ (user-level) instead of the current project"
-            echo "Agents: pi, codex, opencode (all -> .agents/skills), claude (-> .claude/skills)"
+            echo "Usage: link-skills [-g|--global] [--agent <a>[,<b>...]]... <skill-name>"
+            echo "  -g, --global    link into ~/ (user-level) instead of the current project"
+            echo "  --agent <list>  target agent(s); comma/slash-separated and/or repeatable"
+            echo "Agents: pi, codex, opencode (-> .agents/skills), claude (-> .claude/skills)"
+            echo "Default agents when none given: claude codex"
             return 0 ;;
-        *) echo "Error: unknown option '$1'"; return 1 ;;
+        -*) echo "Error: unknown option '$1'"; return 1 ;;
+        *)
+            if [[ -z "$skill_name" ]]; then
+                skill_name="$1"; shift
+            else
+                echo "Error: unexpected argument '$1' (target agents with --agent <name>)"; return 1
+            fi ;;
     esac
 done
 
-if [[ $# -lt 1 ]]; then
-    echo "Usage: link-skills [-g|--global] <skill-name> [agent ...]"
-    echo "Agents: pi, codex, opencode (all -> .agents/skills), claude (-> .claude/skills)"
+if [[ -z "$skill_name" ]]; then
+    echo "Usage: link-skills [-g|--global] [--agent <a>[,<b>...]]... <skill-name>"
+    echo "Agents: pi, codex, opencode (-> .agents/skills), claude (-> .claude/skills)"
     echo "Default agents when none given: claude codex"
     return 1
 fi
-
-local skill_name="$1"
-shift
 
 # Resolve the skill by name: ~/skills/skills/mine/<name> or
 # ~/skills/skills/vendor/<source>/<name>.
@@ -59,16 +76,15 @@ if (( ${#matches} > 1 )); then
     echo "Using: $skill_src"
 fi
 
-# Default agents if none specified
-if [[ $# -eq 0 ]]; then
-    set -- claude codex
-fi
+# De-dup agents; default to claude codex when none were given.
+agents=(${(u)agents})
+(( ${#agents} )) || agents=(claude codex)
 
 # Map agent to its skills subdirectory under $base ($PWD, or ~/ with -g), then
 # link (link name = bare skill name, so it sits one level deep where the agent
 # can discover it).
-local agent_dir
-for agent in "$@"; do
+local agent agent_dir
+for agent in "${agents[@]}"; do
     case "$agent" in
         pi|codex|opencode)  agent_dir=".agents/skills" ;;
         claude)             agent_dir=".claude/skills" ;;

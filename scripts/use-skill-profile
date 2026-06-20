@@ -7,21 +7,22 @@
 # at user level (`use-skill-profile -g global`) for skills you want everywhere;
 # project profiles like econ/programming link only the skills they list.
 #
-# Usage: use-skill-profile [-g|--global] [--add] <profile> [<profile>...] [-- agent ...]
+# Usage: use-skill-profile [-g|--global] [--add] [--agent <a>[,<b>...]]... <profile> [<profile>...]
 #   -g, --global    link into ~/ (user-level: ~/.claude, ~/.agents) instead of $PWD
 #   --add           STACK onto whatever is already linked (skip the clear step)
-#   -- agent ...    target agents (default: claude codex)
+#   --agent <list>  target agent(s); comma/slash-separated and/or repeatable (default: claude codex)
 #
 # Default (no --add) is REPLACE: existing ~/skills symlinks are cleared first, so switching
 # profiles leaves the project clean. Note: --add aside, this also removes one-off skills you
 # linked manually with link-skills — re-add them, or list them in a profile.
 #
 # Examples:
-#   use-skill-profile -g global                  # user-level: skills you want everywhere
-#   use-skill-profile econ                       # project: econ only
-#   use-skill-profile programming econ           # project: union both
-#   use-skill-profile --add lit-review-assistant # (a profile named that) stack without clearing
-#   use-skill-profile econ -- claude             # only the claude agent dir
+#   use-skill-profile -g global                    # user-level: skills you want everywhere
+#   use-skill-profile econ                         # project: econ only
+#   use-skill-profile programming econ             # project: union both
+#   use-skill-profile --add lit-review-assistant   # (a profile named that) stack without clearing
+#   use-skill-profile econ --agent claude          # only the claude agent dir
+#   use-skill-profile econ --agent claude,codex    # both agents explicitly
 setopt local_options null_glob
 
 local base="$PWD"
@@ -31,9 +32,15 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -g|--global) base="$HOME"; shift ;;
         --add)       add=1; shift ;;
-        --)          shift; agents=("$@"); break ;;
+        --agent)
+            shift
+            [[ $# -gt 0 ]] || { echo "Error: --agent needs a value"; return 1; }
+            agents+=(${(s:,:)${1//\//,}}); shift ;;
+        --agent=*)
+            agents+=(${(s:,:)${${1#--agent=}//\//,}}); shift ;;
         -h|--help)
-            echo "Usage: use-skill-profile [-g|--global] [--add] <profile>... [-- agent ...]"
+            echo "Usage: use-skill-profile [-g|--global] [--add] [--agent <a>[,<b>...]]... <profile>..."
+            echo "  --agent <list>  target agent(s); comma/slash-separated and/or repeatable (default: claude codex)"
             echo "Profiles live in ~/skills/profiles/. Apply 'global' at user level (-g) for everywhere-skills."
             echo "Default is REPLACE (clears existing ~/skills links first); --add stacks instead."
             return 0 ;;
@@ -41,10 +48,11 @@ while [[ $# -gt 0 ]]; do
         *)  profiles+=("$1"); shift ;;
     esac
 done
+agents=(${(u)agents})
 (( ${#agents} )) || agents=(claude codex)
 
 if (( ${#profiles} == 0 )); then
-    echo "Usage: use-skill-profile [-g|--global] [--add] <profile>... [-- agent ...]"
+    echo "Usage: use-skill-profile [-g|--global] [--add] [--agent <a>[,<b>...]]... <profile>..."
     echo "Available profiles:"; print -l ~/skills/profiles/*(:t) 2>/dev/null | sed 's/^/  /'
     return 1
 fi
@@ -73,15 +81,17 @@ done
 
 local -a gflag=()
 [[ "$base" == "$HOME" ]] && gflag=(-g)
+# Pass the resolved agents downstream as a single comma-joined --agent value.
+local -a aflag=(--agent "${(j:,:)agents}")
 
 # REPLACE: clear first so stale skills from a previous profile don't linger.
 if (( ! add )); then
-    clear-skills "${gflag[@]}" -- "${agents[@]}"
+    clear-skills "${gflag[@]}" "${aflag[@]}"
 fi
 
 # Link each skill via link-skills (reuses its name resolution + clash handling).
 for s in "${skills[@]}"; do
-    link-skills "${gflag[@]}" "$s" "${agents[@]}"
+    link-skills "${gflag[@]}" "${aflag[@]}" "$s"
 done
 
 echo "Applied profile(s): ${profiles[*]}  ->  ${#skills} skill(s), agents: ${agents[*]}  (base: $base)"

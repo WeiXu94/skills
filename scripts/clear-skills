@@ -1,9 +1,10 @@
 # clear-skills: remove skill symlinks (those pointing into ~/skills) from a project's
 # agent skill dirs — i.e. toggle every linked skill OFF. Real dirs and foreign symlinks
 # are left untouched. Pairs with use-skill-profile (which calls this for its "replace" step).
-# Usage: clear-skills [-g|--global] [-- agent ...]
+# Usage: clear-skills [-g|--global] [--agent <a>[,<b>...]]...
 #   -g, --global    operate on ~/ (user-level) instead of $PWD
-#   -- agent ...    target agents (default: claude codex); pi|codex|opencode -> .agents/skills, claude -> .claude/skills
+#   --agent <list>  target agent(s); comma/slash-separated and/or repeatable
+#                   (default: claude codex). pi|codex|opencode -> .agents/skills, claude -> .claude/skills
 setopt local_options null_glob
 
 local base="$PWD"
@@ -11,15 +12,23 @@ local -a agents
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -g|--global) base="$HOME"; shift ;;
-        --) shift; agents=("$@"); break ;;
+        --agent)
+            shift
+            [[ $# -gt 0 ]] || { echo "Error: --agent needs a value"; return 1; }
+            agents+=(${(s:,:)${1//\//,}}); shift ;;
+        --agent=*)
+            agents+=(${(s:,:)${${1#--agent=}//\//,}}); shift ;;
         -h|--help)
-            echo "Usage: clear-skills [-g|--global] [-- agent ...]"
+            echo "Usage: clear-skills [-g|--global] [--agent <a>[,<b>...]]..."
+            echo "  -g, --global    operate on ~/ (user-level) instead of the project"
+            echo "  --agent <list>  target agent(s); comma/slash-separated and/or repeatable (default: claude codex)"
             echo "Removes symlinks pointing into ~/skills from .claude/skills and .agents/skills."
             return 0 ;;
         -*) echo "Error: unknown option '$1'"; return 1 ;;
-        *)  echo "Error: unexpected argument '$1' (agents go after --)"; return 1 ;;
+        *)  echo "Error: unexpected argument '$1' (use --agent <name>)"; return 1 ;;
     esac
 done
+agents=(${(u)agents})
 (( ${#agents} )) || agents=(claude codex)
 
 local agent agent_dir target_dir link tgt

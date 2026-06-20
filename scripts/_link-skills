@@ -4,6 +4,7 @@
 #
 # Completes, in order:
 #   - the -g/--global flag
+#   - the repeatable --agent option (value: comma-separated agent names)
 #   - the skill NAME (positional 1) from ~/skills/skills/mine/* and
 #     ~/skills/skills/vendor/*/* — gathered live, so new skills appear at once
 #   - trailing agent names (pi/codex/opencode/claude)
@@ -33,6 +34,7 @@ skills=(${(u)skills})           # de-dup (a name can exist in both mine/ and ven
 
 _arguments -s -C \
   '(-g --global)'{-g,--global}'[link into ~/ (user-level: ~/.claude, ~/.agents) instead of the project]' \
+  '*--agent[target agent(s); comma-separated, repeatable]:agents:_values -s , agent pi codex opencode claude' \
   '1:skill:->skill' \
   '*:agent:(pi codex opencode claude)'
 
