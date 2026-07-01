@@ -1,11 +1,26 @@
 # programming — software-engineering skill set (links only what's listed below).
 # Cross-cutting skills (caveman/grilling/handoff/record-as-implement) live in the
 # `global` profile, applied separately at user level.
+
+# --- engineering (all skills under mattpocock/skills/engineering) ---
+ask-matt
 codebase-design
 diagnosing-bugs
 domain-modeling
+grill-with-docs
+implement
 improve-codebase-architecture
 prototype
+resolving-merge-conflicts
+setup-matt-pocock-skills
+tdd
+to-issues
 to-prd
+triage
+
+# --- in-progress ---
+review
+
+# --- other ---
 decision-mapping
 karpathy-guidelines
