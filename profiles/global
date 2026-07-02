@@ -1,7 +1,6 @@
 # global — cross-cutting skills to link at user level (once), not per project.
 # Apply with: use-skill-profile -g global   (links into ~/.claude + ~/.agents)
 # NOT auto-included by other profiles — list a skill here only if you want it everywhere.
-caveman
 grilling
 handoff
 record-as-implement

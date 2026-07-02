@@ -1,106 +1,146 @@
-# Some general rules to follow for economics research projects
+# Rules for economics research projects
 
-## Regression Results
+## Principles
 
-- When running regressions, TeX export is fine, but also report the result table in Markdown.
-- The Markdown table should be readable immediately in the GUI/CLI, not require opening raw TeX.
+- Be a peer reviewer, not a cheerleader. Challenge weak identification, omitted
+  variables, fragile assumptions, and overclaiming. State uncertainty honestly.
+- Separate what the author claims, what the data support, and your own inference.
+- Investigate before asserting. Read the paper, script, or data first; cite
+  `file:line` for code references.
+- Before nontrivial work, surface assumptions and define a verifiable success
+  criterion (e.g. "coefficient within X of the published table", "model moments
+  match targets to tolerance Y").
 
-## Tables
+## Literature
 
-Export every regression-result or summary-statistics table in both TeX and Markdown-table
-format, then echo the Markdown table inline so I can view it in the TUI/GUI without opening
-the raw TeX.
+- Summarize by: research question, identification strategy, data and sample, key
+  specification, headline estimates (magnitudes and units), robustness, and the
+  most credible threats to validity. Separate the causal claim from the
+  estimand — what variation identifies the effect, under what assumptions.
+- Across papers, build a comparison table (estimate, sign, magnitude, sample,
+  method, identification) and note where findings conflict.
+- Literature lives under `<project>/literature/` as PDFs. Do NOT open PDFs with
+  the Read tool. Transcribe with `pdftotext` to
+  `<project>/literature/transcribed/<same-name>.txt` (keep the source filename,
+  swap `.pdf` for `.txt`), then `rg` for what you need. Read the abstract and
+  intro first, then decide whether to read the rest.
 
-- Use the `modelsummary` package to export the LaTeX table in R.
-- Use the `esttab` package to export the LaTeX table in Stata.
-- Fall back to a direct file write (e.g. `writeLines`) only if neither can produce the table.
+## Modeling
 
-### LaTeX integration with other writing/doc TeX files
+- Derive before you code: environment, agents' problems, FOCs, equilibrium
+  definition, parameters-to-observables map. Flag where functional-form or
+  distributional assumptions do the heavy lifting.
+- For structural/quantitative work: state the calibration vs. estimation split,
+  targeted moments, per-parameter identification argument, and solution method
+  (VFI, projection, MIT shock, GMM/SMM). Check units, steady-state consistency,
+  and market clearing.
+- Validate numerically: convergence diagnostics, grid/tolerance sensitivity,
+  model-vs-data moment fit.
 
-Wrap the table TeX file inside a `threeparttable` env when including it in other files like
-`paper/slide.tex`:
+## Empirics
 
-```latex
-\begin{table}[htpb]
-    \centering
-    \begin{threeparttable}
-        \caption{<title>}\label{tab:<label>}
-        \centering
-        \input{<table-file.tex>}
-        \begin{tablenotes}[para,flushleft]
-            \textbf{Notes:} <note-content>
-        \end{tablenotes}
-    \end{threeparttable}
-\end{table}
-```
+- Pin down the research design first (DiD, event study, IV, RD, panel FE,
+  structural), match the estimator to it, and state the identifying assumption.
+- Inspect data before modeling: sample construction, missingness, outliers,
+  variable definitions, panel balance, treatment timing.
+- Use the right clustering/heteroskedasticity treatment; default to
+  robust/clustered SEs and say which. Run pre-trend / placebo / specification
+  checks where the design allows. A single point estimate is not a result.
 
-## Figures
+## Language conventions
 
-Generate every image/figure in PDF format, falling back to PNG only when PDF is not applicable.
+- **R**: `haven`, `dplyr`/`tidyr`, `fixest` (`feols`) for FE, `modelsummary` for
+  tables, `sandwich` for robust SEs; export with `booktabs = TRUE`.
+- **Stata**: `reghdfe`/`ivreghdfe` for high-dimensional FE, `esttab`/`estout`
+  for tables; `frames`/`tempfile` over clobbering data in memory; run `.do`
+  files in batch.
+- **MATLAB**: batch via `matlab -batch "<script>"` (no `.m`). Keep solution,
+  estimation, and counterfactual as separate scripts.
+- **Python**: `pandas`/`numpy`, `statsmodels`/`linearmodels`, `pyfixest` for FE,
+  `scipy.optimize` for structural estimation; use a project virtual environment.
 
-### LaTeX integration with TeX files
+## Tables and figures
 
-```latex
-\begin{figure}[htbp]
-    \centering
-    \caption{<title>}
-    \label{fig:<label>}
-    \includegraphics[width=\linewidth]{<figure-file>.pdf}
-\end{figure}
-```
+- Come from scripts, never hand-typed numbers. Export every regression and
+  summary-stats table in BOTH LaTeX (for the paper) and a Markdown table (`.md`)
+  so results are readable without opening raw TeX, and echo that Markdown table
+  inline on the terminal so it renders in the TUI/GUI.
+- LaTeX export: `modelsummary` (R) or `esttab` (Stata); fall back to direct file
+  writing (e.g. `writeLines`) only if neither can produce the table. The inline
+  table should be compact, pipe-delimited Markdown, e.g.:
 
-## Memo / file naming
+  ```
+  |          |    (1)  |    (2)   |
+  |:---------|--------:|---------:|
+  | weight   | 1.747** | 3.465*** |
+  |          | (2.72)  | (5.49)   |
+  | mpg      | -49.51  | 21.85    |
+  |          | (-0.57) | (0.29)   |
+  | Num.Obs. | 74      | 74       |
+  ```
 
-Agent-generated memos use the timestamp-prefixed convention from the russia project:
-`YYYYMMDDHHMM description.md`.
+- Save figures as PDF, falling back to PNG only when PDF is not applicable.
+- Wrap an exported table inside `threeparttable` when including it elsewhere:
 
-## Literature PDFs
+  ```latex
+  \begin{table}[htpb]
+      \centering
+      \begin{threeparttable}
+          \caption{<title>}\label{tab:<label>}
+          \centering
+          \input{<table-file.tex>}
+          \begin{tablenotes}[para,flushleft]
+              \textbf{Notes:} <note-content>
+          \end{tablenotes}
+      \end{threeparttable}
+  \end{table}
+  ```
 
-- Reference literature usually lives under `<project>/literature/` as PDF files.
+  ```latex
+  \begin{figure}[htbp]
+      \centering
+      \caption{<title>}\label{fig:<label>}
+      \includegraphics[width=\linewidth]{<figure-file>.pdf}
+  \end{figure}
+  ```
 
-When you want to read the PDF of a paper:
+## Writing papers and slides (LaTeX / Beamer)
 
-- DO NOT use the Read tool to open PDF files directly.
-- Use the `pdftotext` command via bash to transcribe them into a `.txt` file under
-  `<project>/literature/transcribed/<same-name>.txt`. Name each transcription exactly after
-  its source PDF filename (replace `.pdf` with `.txt`).
-- Use `rg` to retrieve the information you need from the paper.
-- Read the abstract and/or introduction first, then decide whether to read the full content.
+- Read the target `.tex` first and match its document class, structure,
+  notation, and citation style. Write like an economist: lead with the
+  contribution, state question and result up front, tie claims to evidence,
+  define notation before use, and prefer precise prose over hedged filler.
+- `\input{}` exported tables and `\includegraphics` exported figures. Pull
+  citation keys from the project's `.bib` files; never invent a key or reference.
+- Beamer: one idea per frame, minimal text, lean on exported figures/tables, and
+  use frame titles that state the takeaway.
 
 ## Reproducibility (REQUIRED)
 
-All analysis must be fully reproducible. No exceptions. I prefer Make/a Makefile to handle this.
+A coauthor or referee must be able to clone the repo and reproduce every number
+and figure with `make`. Prefer a Makefile to orchestrate everything.
 
-### Write all code to files
-- **Never** run analysis via inline one-liners (e.g. `Rscript -e "..."`, `python -c "..."`,
-  `stata -e -q "..."`, `matlab -batch "disp(...)"`) without first saving the code to a file in
-  the appropriate directory — `<project>/code/`, `<project>/scripts/`, or `<project>/tmp/`.
-- Even quick/throwaway scripts that produce a table, figure, number, or transformed dataset must
-  be committed as a `.do`, `.m`, `.R`, `.py`, or `.sh` file. Set a seed for anything stochastic.
-- The Make target should invoke the file, not embed the code.
-- This applies to data-cleaning snippets, ad-hoc plots, sanity checks that get cited, and anything
-  whose output ends up in the paper, slides, or memos.
+- **Code lives in files, not shell history.** Never run analysis as inline
+  one-liners (`Rscript -e`, `python -c`, `stata -e -q`, `matlab -batch "disp"`).
+  Even throwaway scripts that produce a number, table, figure, or dataset go in
+  `<project>/code|scripts|tmp/` as a `.do`/`.m`/`.R`/`.py`/`.sh` file that a
+  Make target invokes; the target never embeds the code. Set seeds.
+- **Environment setup lives in the Makefile.** Downloads, data fetches, symlinks,
+  directory creation, and dependency installs are Make targets with URLs and
+  destinations visible, so a fresh clone rebuilds from scratch. If a step cannot
+  be automated (e.g. manual data-portal login), document it in a `README` beside
+  the target and have the target check for the expected file.
+- **Build documents through the project's build system**, not ad-hoc `pdflatex`;
+  fix LaTeX errors and warnings before declaring success.
+- **Scratch scripts** that are NOT project analysis (format converters, quick
+  extractors) go in `<project>/tmp/` (gitignored), never the system `/tmp`. If a
+  scratch script's output ends up in the paper, slides, or a memo, it is
+  analysis — move it into `code/`/`scripts/` and follow the rules above.
 
-### Put all environment setup in the Makefile
-- File downloads (`curl`, `wget`), data fetches, symlink creation (`ln -s`), directory creation
-  (`mkdir -p`), config copying, and dependency installs must be Make targets — not steps run by
-  hand in the shell.
-- Each external resource gets a target with the URL and destination path visible in the Makefile so
-  a fresh clone can rebuild from scratch with `make`.
-- If a step truly cannot be automated (e.g. manual data-portal login), document the exact manual
-  steps in a `README` next to the target and have the target check for the expected file.
+## Workflow
 
-### Build documents through the project's build system
-- Compile papers and slides via the project's Make targets, not ad-hoc `pdflatex`. Fix LaTeX errors
-  and warnings before declaring success.
-
-### Temporary/scratch scripts
-- One-off helpers that are NOT project analysis (format converters, forensics helpers, quick
-  extractors) go in `<project>/tmp/` (gitignored), never the system `/tmp`. If a scratch script's
-  output ends up in the paper, slides, or a memo, it is analysis — move it into `code/`/`scripts/`
-  and follow the rules above.
-
-### Why
-A future reader (including the user, a coauthor, or a referee) must be able to clone the repo and
-reproduce every number and figure by running `make`. Inline code in shell history disappears;
-Makefile-driven file-based code does not.
+- Keep theory, estimation, and counterfactual stages modular and separately
+  runnable; export to the designated output directories.
+- Name agent-generated memos `YYYYMMDDHHMM description.md`.
+- If stuck after a few attempts, stop and ask rather than flailing on errors.
+- Respect each project's own conventions and any `AGENTS.md`/`CLAUDE.md` rules.

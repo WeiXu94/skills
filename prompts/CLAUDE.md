@@ -5,15 +5,10 @@
 
 ## Documents
 
-- Unless I explicitly ask otherwise, write docs, such as plan/handoff/summary, under `./docs/`; create it if missing.
+- Unless I explicitly ask otherwise, write docs, such as plan/handoff/summary, under `./docs/logs/`; create it if missing.
 - Use `YYYYMMDDHHmm-<plan/handoff/summary/empty>-<topic>.md` for doc filenames. The middle slot indicates what kind of the doc is, leave as empty if no category.
 - For HTML reports/docs, use the same rule: `YYYYMMDDHHmm-<topic>.html`.
 - This applies to technical decisions, code logic/pipelines, chat summaries, result records, handoffs, and similar docs.
-
-## Temporary/scratch scripts
-
-- When working on a project, write temporary one-off scripts (format converters, forensics helpers, quick extractors, etc.) into `<project>/tmp/`; create the folder if missing. Never write them to the system `/tmp`.
-- Add `/tmp/` to the project's `.gitignore` if it isn't ignored yet.
 
 ## Auto commit
 
