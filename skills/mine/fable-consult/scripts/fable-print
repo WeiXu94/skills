@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# fable-print — invoke Claude Code with fable model in print mode
+# Reads prompt from first argument, or stdin if no argument.
+
+set -euo pipefail
+
+PROMPT="${1:-$(cat)}"
+
+exec env \
+  ANTHROPIC_BASE_URL="https://www.packyapi.com" \
+  ANTHROPIC_AUTH_TOKEN="${PACKY_CLAUDE_SALE_API_KEY}" \
+  CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+  CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 \
+  claude --model "fable[1m]" --effort "high" --dangerously-skip-permissions --print "$PROMPT"
