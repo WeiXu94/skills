@@ -1,6 +1,3 @@
 [submodule "skills/vendor/trystan-sa/claude-design-system-prompt"]
 	path = skills/vendor/trystan-sa/claude-design-system-prompt
 	url = https://github.com/Trystan-SA/claude-design-system-prompt
-[submodule "skills/vendor/zhaoxuya520/reverse-skill"]
-	path = skills/vendor/zhaoxuya520/reverse-skill
-	url = https://github.com/zhaoxuya520/reverse-skill
