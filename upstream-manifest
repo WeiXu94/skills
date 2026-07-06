@@ -16,6 +16,7 @@ repo  baoyu         https://github.com/JimLiu/baoyu-skills.git
 repo  karpathy      https://github.com/multica-ai/andrej-karpathy-skills.git
 repo  juliusbrussee https://github.com/JuliusBrussee/caveman.git
 repo  badlogic  https://github.com/badlogic/pi-skills.git
+repo  zhaoxuya520  https://github.com/zhaoxuya520/reverse-skill.git
 
 skill mattpocock  skills/in-progress/writing-beats                  writing-beats
 skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
@@ -48,3 +49,24 @@ skill mattpocock  skills/engineering/implement  implement
 skill mattpocock  skills/engineering/triage  triage
 skill mattpocock  skills/engineering/ask-matt  ask-matt
 skill mattpocock  skills/productivity/teach  teach
+skill zhaoxuya520  skills/api-security  api-security
+skill zhaoxuya520  skills/apk-reverse  apk-reverse
+skill zhaoxuya520  skills/attack-chain  attack-chain
+skill zhaoxuya520  skills/binary-diff  binary-diff
+skill zhaoxuya520  skills/browser-automation  browser-automation
+skill zhaoxuya520  skills/diagram-generator  diagram-generator
+skill zhaoxuya520  skills/docs-generator  docs-generator
+skill zhaoxuya520  skills/dotnet-reverse  dotnet-reverse
+skill zhaoxuya520  skills/edr-bypass-re  edr-bypass-re
+skill zhaoxuya520  skills/firmware-pentest  firmware-pentest
+skill zhaoxuya520  skills/ida-reverse  ida-reverse
+skill zhaoxuya520  skills/js-reverse  js-reverse
+skill zhaoxuya520  skills/llm-security  llm-security
+skill zhaoxuya520  skills/malware-analysis  malware-analysis
+skill zhaoxuya520  skills/mobile-reverse  mobile-reverse
+skill zhaoxuya520  skills/patch-diff-exploit  patch-diff-exploit
+skill zhaoxuya520  skills/pentest-tools  pentest-tools
+skill zhaoxuya520  skills/pwn-chain  pwn-chain
+skill zhaoxuya520  skills/radare2  radare2
+skill zhaoxuya520  skills/reverse-engineering  reverse-engineering
+skill zhaoxuya520  skills/supply-chain-security  supply-chain-security
