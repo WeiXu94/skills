@@ -18,5 +18,4 @@ The fable model excels at deep reasoning. For best results, spend effort craftin
 - Mention file paths so fable can read them directly
 - Be specific about what you want: plan, critique, rewrite, review, etc.
 - Include constraints and expectations
-- Instruct fable to write its full output to a file (e.g., `docs/logs/YYYYMMDDHHmm-fable-review.md`) for persistence
 - Instruct fable to end with a concise summary of its findings and the file(s) changed/created — this will be shown to the user

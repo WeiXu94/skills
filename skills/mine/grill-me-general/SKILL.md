@@ -1,6 +1,6 @@
 ---
 name: grill-me-general
-description: A relentless interview to stress-test any plan — a build, a research design, a paper's argument.
+description: A relentless interview to stress-test any plan or design — a build, a research design, a paper's argument.
 disable-model-invocation: true
 ---
 
