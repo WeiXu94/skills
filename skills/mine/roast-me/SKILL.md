@@ -1,6 +1,7 @@
 ---
 name: roast-me
-description: Roast the user's plan relentlessly before they commit to it. Use when the user wants to stress-test any plan — a build or design, a research design, a paper's argument — or uses any 'roast'/'grill' trigger phrases.
+description: A relentless interview to stress-test any plan — a build, a research design, a paper's argument.
+disable-model-invocation: true
 ---
 
 Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
