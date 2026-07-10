@@ -1,14 +1,14 @@
 /**
- * retry-400 — a minimal pi extension that retries ONLY HTTP 400 errors.
+ * retry — a minimal pi extension that retries assistant errors by type.
  *
- * Scope is deliberately narrow: the ONLY thing this extension retries is an
- * assistant message with `stopReason === "error"` whose errorMessage matches a
- * 400 pattern (HTTP 400 status code, or "bad request"). Nothing else is
- * retried — not 413, not connection errors, not credit errors, not max_tokens,
- * not context overflow, not any catch-all. Those are left entirely to pi-core.
+ * An extensible error-type registry (`ERROR_TYPES` below) defines which errors
+ * are retryable. Each entry is a named category with a set of regex patterns
+ * matched against the assistant message's `errorMessage`. Today the only
+ * registered type is "400" (HTTP 400 Bad Request); to handle another error
+ * case, append an entry to `ERROR_TYPES`.
  *
- * Mechanism (ported from monotykamary/pi-retry, trimmed to 400-only):
- *  - agent_end detects a 400 error and kicks off triggerInvisibleContinue().
+ * Mechanism (ported from monotykamary/pi-retry):
+ *  - agent_end detects a retryable error and kicks off triggerInvisibleContinue().
  *  - triggerInvisibleContinue() owns the retry loop: waits for idle, strips the
  *    error assistant message from agent state, sleeps with exponential backoff,
  *    then resumes the agent loop via agent.prompt([]) — no new message is
@@ -36,23 +36,50 @@ const BASE_DELAY_MS = 2000;
 const MAX_DELAY_MS = 60000;
 const BACKOFF_MULTIPLIER = 2;
 
-// ── 400 detection ──────────────────────────────────────────────────────────
-// HTTP 400 Bad Request. "bad request" is the standard 400 reason phrase.
-// NOTE: deliberately excludes 413 / "payload too large" — this is 400-only.
-const ERROR_400_PATTERNS: RegExp[] = [
-  /\b400\b.*status code/i,
-  /bad request/i,
+// ── Retryable error types ───────────────────────────────────────────────────
+// To add a new retryable error case, append an entry here. An assistant
+// message with stopReason === "error" is retried iff its errorMessage matches
+// at least one pattern of any registered type.
+interface ErrorTypeDef {
+  /** Short label shown in status/logs, e.g. "400". */
+  name: string;
+  /** Human-readable description for the status panel. */
+  description: string;
+  /** Regex patterns tested against errorMessage (case-insensitive where flagged). */
+  patterns: RegExp[];
+}
+
+const ERROR_TYPES: ErrorTypeDef[] = [
+  {
+    name: "400",
+    description: "HTTP 400 Bad Request (status code 400 / \"bad request\")",
+    patterns: [
+      /\b400\b.*status code/i,
+      /bad request/i,
+    ],
+  },
+  // ── Add more error types below, e.g. ────────────────────────────────────
+  // {
+  //   name: "429",
+  //   description: "HTTP 429 Too Many Requests (rate limit)",
+  //   patterns: [/\b429\b.*status code/i, /rate limit/i, /too many requests/i],
+  // },
 ];
 
 function isAssistantMessage(m: AgentMessage): m is Extract<AgentMessage, { role: "assistant" }> {
   return m.role === "assistant";
 }
 
-/** True only for an error assistant message whose errorMessage looks like a 400. */
-function has400Error(message: AgentMessage): boolean {
-  if (!isAssistantMessage(message)) return false;
-  if (message.stopReason !== "error" || !message.errorMessage) return false;
-  return ERROR_400_PATTERNS.some(p => p.test(message.errorMessage!));
+/** Returns the matching error type, or undefined if the message isn't a retryable error. */
+function matchErrorType(message: AgentMessage): ErrorTypeDef | undefined {
+  if (!isAssistantMessage(message)) return undefined;
+  if (message.stopReason !== "error" || !message.errorMessage) return undefined;
+  return ERROR_TYPES.find(t => t.patterns.some(p => p.test(message.errorMessage!)));
+}
+
+/** True only for an error assistant message whose errorMessage matches a registered type. */
+function isRetryableError(message: AgentMessage): boolean {
+  return matchErrorType(message) !== undefined;
 }
 
 // ── Small helpers ───────────────────────────────────────────────────────────
@@ -83,13 +110,15 @@ class RetryState {
   private attempt = 0;
   private isRetrying = false;
   private lastErrorMessage = "";
+  private lastErrorType = "";
   getAttempt() { return this.attempt; }
   getIsRetrying() { return this.isRetrying; }
   getLastErrorMessage() { return this.lastErrorMessage; }
-  startRetry(msg: string) { this.isRetrying = true; this.attempt++; this.lastErrorMessage = msg; }
+  getLastErrorType() { return this.lastErrorType; }
+  startRetry(type: string, msg: string) { this.isRetrying = true; this.attempt++; this.lastErrorType = type; this.lastErrorMessage = msg; }
   endRetry() { this.isRetrying = false; }
-  reset() { this.attempt = 0; this.isRetrying = false; this.lastErrorMessage = ""; }
-  succeed() { this.attempt = 0; this.isRetrying = false; this.lastErrorMessage = ""; }
+  reset() { this.attempt = 0; this.isRetrying = false; this.lastErrorMessage = ""; this.lastErrorType = ""; }
+  succeed() { this.attempt = 0; this.isRetrying = false; this.lastErrorMessage = ""; this.lastErrorType = ""; }
 }
 
 // ── Capture the live Agent instance (fires on session start + resume) ───────
@@ -102,7 +131,7 @@ Agent.prototype.subscribe = function (this: Agent, ...args: any[]) {
 };
 
 // ── State ───────────────────────────────────────────────────────────────────
-const state400 = new RetryState();
+const state = new RetryState();
 
 // Abort flag: set on turn_end "aborted", cleared on session_start / success.
 let _userAborted = false;
@@ -201,11 +230,11 @@ function removeErrorFromAgentState(): void {
   }
 }
 
-function lastMessageIs400Error(): boolean {
+function lastMessageIsRetryableError(): boolean {
   if (!_agent) return false;
   const messages = _agent.state.messages;
   const lastMsg = messages[messages.length - 1];
-  return !!lastMsg && has400Error(lastMsg);
+  return !!lastMsg && isRetryableError(lastMsg);
 }
 
 // ── Extension entry ─────────────────────────────────────────────────────────
@@ -215,17 +244,17 @@ export default function (pi: ExtensionAPI) {
     const msg = event.message as AgentMessage;
     if (!isAssistantMessage(msg)) return;
     if (msg.stopReason === "aborted") {
-      state400.reset();
+      state.reset();
       _userAborted = true;
       return;
     }
     if (msg.stopReason !== "error" && msg.stopReason !== "length") {
-      state400.succeed();
+      state.succeed();
       _userAborted = false;
     }
   });
 
-  // Detect 400 errors on agent_end. Must NOT await sleep here — this runs
+  // Detect retryable errors on agent_end. Must NOT await sleep here — this runs
   // inside processEvents(); a sleep would freeze the agent. Kick off the loop.
   pi.on("agent_end", async (_event, ctx) => {
     const entries = ctx.sessionManager.getEntries();
@@ -234,13 +263,14 @@ export default function (pi: ExtensionAPI) {
     if (_userAborted) return;
     if (_continueInProgress) return;
 
-    // ONLY 400. Everything else is left to pi-core.
-    if (!has400Error(lastAssistant)) return;
+    // Only registered error types. Everything else is left to pi-core.
+    const matched = matchErrorType(lastAssistant);
+    if (!matched) return;
 
-    if (state400.getIsRetrying()) return;
-    const errorMsg = lastAssistant.errorMessage || "400 Bad Request";
-    state400.startRetry(errorMsg);
-    state400.endRetry();
+    if (state.getIsRetrying()) return;
+    const errorMsg = lastAssistant.errorMessage || matched.description;
+    state.startRetry(matched.name, errorMsg);
+    state.endRetry();
     void triggerInvisibleContinue();
   });
 
@@ -263,45 +293,47 @@ export default function (pi: ExtensionAPI) {
   pi.on("turn_end", async (_e, ctx) => {
     if (!_notifyFn) _notifyFn = (message, level) => ctx.ui.notify(message, level);
   });
-  function _notifyRetryAttempt(attempt: number, delayMs: number) {
-    _safeNotify(`400 error — retry attempt ${attempt} (backoff ${formatDuration(delayMs)})...`, "info");
+  function _notifyRetryAttempt(typeName: string, attempt: number, delayMs: number) {
+    _safeNotify(`${typeName} error — retry attempt ${attempt} (backoff ${formatDuration(delayMs)})...`, "info");
   }
 
-  // Minimal manual command: /retry400 [status|reset]
-  pi.registerCommand("retry400", {
-    description: "Retry 400-only controls: /retry400 (manual trigger), /retry400 status, /retry400 reset",
+  // Minimal manual command: /retry [status|reset]
+  pi.registerCommand("retry", {
+    description: "Retry controls: /retry (manual trigger), /retry status, /retry reset",
     handler: async (args, ctx) => {
       const sub = args[0]?.toLowerCase();
 
       if (sub === "reset") {
-        state400.reset();
+        state.reset();
         _userAborted = false;
-        ctx.ui.notify("400 retry counters reset", "info");
+        ctx.ui.notify("Retry counters reset", "info");
         return;
       }
 
       if (sub === "status") {
         const entries = ctx.sessionManager.getEntries();
         const last = getLastAssistantMessage(entries);
-        let status = "=== Retry-400 Status ===\n\n";
-        status += "400 Errors:\n";
-        status += `  Current attempt: ${state400.getAttempt()}\n`;
-        status += `  Is retrying: ${state400.getIsRetrying()}\n`;
-        status += `  Last error: ${state400.getLastErrorMessage().substring(0, 100) || "None"}\n\n`;
+        let status = "=== Retry Status ===\n\n";
+        status += "Errors:\n";
+        status += `  Current attempt: ${state.getAttempt()}\n`;
+        status += `  Is retrying: ${state.getIsRetrying()}\n`;
+        status += `  Last error type: ${state.getLastErrorType() || "None"}\n`;
+        status += `  Last error: ${state.getLastErrorMessage().substring(0, 100) || "None"}\n\n`;
         status += "Configuration:\n";
         status += `  Base delay: ${BASE_DELAY_MS}ms\n  Max delay: ${MAX_DELAY_MS}ms\n  Multiplier: ${BACKOFF_MULTIPLIER}\n`;
-        status += `  Scope: HTTP 400 only (status code 400 / "bad request")\n\n`;
+        status += `  Registered error types: ${ERROR_TYPES.map(t => t.name).join(", ") || "none"}\n\n`;
         if (last && isAssistantMessage(last)) {
+          const matched = matchErrorType(last);
           status += "Last Assistant Message:\n";
           status += `  Stop reason: ${last.stopReason}\n`;
           status += `  Error message: ${last.errorMessage?.substring(0, 100) || "None"}\n`;
-          status += `  Is 400: ${has400Error(last)}`;
+          status += `  Matched error type: ${matched?.name ?? "none"}`;
         }
         ctx.ui.notify(status, "info");
         return;
       }
 
-      // /retry400 (no args) — manual trigger
+      // /retry (no args) — manual trigger
       const entries = ctx.sessionManager.getEntries();
       const last = getLastAssistantMessage(entries);
       if (!last || !isAssistantMessage(last)) {
@@ -309,25 +341,26 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       _userAborted = false;
-      if (has400Error(last)) {
-        ctx.ui.notify("Manually retrying 400 error...", "info");
-        state400.reset();
+      const matched = matchErrorType(last);
+      if (matched) {
+        ctx.ui.notify(`Manually retrying ${matched.name} error...`, "info");
+        state.reset();
         void triggerInvisibleContinue();
         return;
       }
-      ctx.ui.notify("No 400 error detected (this extension only retries 400s).", "warning");
+      ctx.ui.notify("No retryable error detected (no registered error type matched).", "warning");
     },
   });
 
   // Reset on session switch.
   pi.on("session_start", async () => {
     _sessionGeneration++;
-    state400.reset();
+    state.reset();
     _userAborted = false;
   });
 
   // ── Retry loop driver ─────────────────────────────────────────────────────
-  // Loops: prompt([]) → check result → on 400 again, sleep+backoff, retry.
+  // Loops: prompt([]) → check result → on retryable error again, sleep+backoff, retry.
   // Exits on success, user abort, or session change.
   async function triggerInvisibleContinue() {
     if (!_agent) return;
@@ -347,7 +380,8 @@ export default function (pi: ExtensionAPI) {
         removeErrorFromAgentState();
         attempt++;
         const delay = calculateDelay(attempt);
-        _notifyRetryAttempt(attempt, delay);
+        const typeName = state.getLastErrorType() || "error";
+        _notifyRetryAttempt(typeName, attempt, delay);
 
         const interrupted = await interruptibleSleep(delay, myGeneration);
         if (interrupted) return;
@@ -360,11 +394,11 @@ export default function (pi: ExtensionAPI) {
         }
 
         if (_userAborted || _sessionGeneration !== myGeneration) return;
-        if (!lastMessageIs400Error()) {
-          // Success or non-400 terminal state — exit.
+        if (!lastMessageIsRetryableError()) {
+          // Success or non-retryable terminal state — exit.
           return;
         }
-        // Still a 400 — loop back for another attempt.
+        // Still a retryable error — loop back for another attempt.
       }
     } finally {
       if (_sessionGeneration === myGeneration) {

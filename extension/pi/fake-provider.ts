@@ -1,17 +1,17 @@
 /**
- * fake400-provider — a minimal custom provider for pi that POSTs to a local
+ * fake-provider — a minimal custom provider for pi that POSTs to a local
  * fake server (fake400-server.mjs) which always returns HTTP 400. Used to test
- * that retry-400.ts fires on a real 400.
+ * that retry.ts fires on a real 400.
  *
  * The streamSimple fetches the server; on a non-200 response it throws an
  * Error whose message contains "400 status code" + "Bad Request", which
- * retry-400.ts detects (ERROR_400_PATTERNS) and retries.
+ * retry.ts detects (its "400" error-type patterns) and retries.
  *
  * Usage:
  *   bun /Users/weixu/skills/extension/pi/fake400-server.ts &  # start fake server
  *   pi -ne \
- *     -e /Users/weixu/skills/extension/pi/retry-400.ts \
- *     -e /Users/weixu/skills/extension/pi/fake400-provider.ts \
+ *     -e /Users/weixu/skills/extension/pi/retry.ts \
+ *     -e /Users/weixu/skills/extension/pi/fake-provider.ts \
  *     --provider fake400 --model fake400/test \
  *     -p "say hi"
  */
@@ -73,8 +73,8 @@ function streamFake400(
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        // Message includes "400" + "status code" + "Bad Request" so retry-400
-        // matches it via ERROR_400_PATTERNS.
+        // Message includes "400" + "status code" + "Bad Request" so retry.ts
+        // matches it via its "400" error-type patterns.
         throw new Error(
           `Request failed with ${res.status} status code (Bad Request): ${text.slice(0, 200)}`,
         );
