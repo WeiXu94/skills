@@ -1,21 +1,29 @@
 ---
 name: fable-consult
-description: Only use when the user explicitly mentions "fable". Spawns Claude Code with the fable[1m] model (high effort) in print mode as a sub-agent for planning, code review, academic writing, or any advanced reasoning task.
+description: Use when the user wants to consult "fable" or "Claude" for deep reasoning, planning, code review, or writing. Spawns Claude (fable/opus, high effort) as a Herdr agent target so the session is live-visible (attach, read, state) instead of hidden print output.
 ---
 
 # Fable Consult
 
-The fable model excels at deep reasoning. For best results, spend effort crafting a clear, well-structured prompt — include relevant file paths, context, and specific questions.
+Spawns Claude as a Herdr agent target for full live visibility. Assumes you are already inside a Herdr session. Uses helper scripts in `scripts/` (relative to this file) so the read/cleanup mechanics don't need to be reasoned about each time.
 
-## Usage
+1. Craft a self-contained prompt (file paths, exact deliverable, constraints)
 
+2. Start (or restart) the subagent by name:
 ```bash
-"$SKILL_DIR"/scripts/fable-print "PROMPT"
+scripts/start.sh <name> "$PROMPT" [model] [effort]
 ```
+Defaults: model `fable`, effort `high`. Closes any prior instance with the same `<name>` first.
 
-## Prompt crafting
+3. Fetch the reply once ready (blocks until idle, then returns just the model's answer text):
+```bash
+scripts/answer.sh <name> [timeout_ms] [lines]
+```
+Defaults: timeout `600000`, lines `300` (raise `lines` for very long essay-style answers). Report the returned text to the user.
 
-- Mention file paths so fable can read them directly
-- Be specific about what you want: plan, critique, rewrite, review, etc.
-- Include constraints and expectations
-- Instruct fable to end with a concise summary of its findings and the file(s) changed/created — this will be shown to the user
+The agent pane keeps running afterward for live inspection (`herdr agent attach <name>`).
+
+## Notes
+- Swap `opus` in for `model` if the user asks for opus.
+- Cleanup when fully done: `herdr pane close "$(herdr agent get <name> | jq -r .result.agent.pane_id)"`.
+- read https://raw.githubusercontent.com/ogulcancelik/herdr/refs/heads/master/SKILL.md for more details on Herdr usage.

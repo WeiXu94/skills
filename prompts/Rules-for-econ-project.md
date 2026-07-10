@@ -25,28 +25,6 @@
   swap `.pdf` for `.txt`), then `rg` for what you need. Read the abstract and
   intro first, then decide whether to read the rest.
 
-## Modeling
-
-- Derive before you code: environment, agents' problems, FOCs, equilibrium
-  definition, parameters-to-observables map. Flag where functional-form or
-  distributional assumptions do the heavy lifting.
-- For structural/quantitative work: state the calibration vs. estimation split,
-  targeted moments, per-parameter identification argument, and solution method
-  (VFI, projection, MIT shock, GMM/SMM). Check units, steady-state consistency,
-  and market clearing.
-- Validate numerically: convergence diagnostics, grid/tolerance sensitivity,
-  model-vs-data moment fit.
-
-## Empirics
-
-- Pin down the research design first (DiD, event study, IV, RD, panel FE,
-  structural), match the estimator to it, and state the identifying assumption.
-- Inspect data before modeling: sample construction, missingness, outliers,
-  variable definitions, panel balance, treatment timing.
-- Use the right clustering/heteroskedasticity treatment; default to
-  robust/clustered SEs and say which. Run pre-trend / placebo / specification
-  checks where the design allows. A single point estimate is not a result.
-
 ## Language conventions
 
 - **R**: `haven`, `dplyr`/`tidyr`, `fixest` (`feols`) for FE, `modelsummary` for
@@ -56,8 +34,6 @@
   files in batch.
 - **MATLAB**: batch via `matlab -batch "<script>"` (no `.m`). Keep solution,
   estimation, and counterfactual as separate scripts.
-- **Python**: `pandas`/`numpy`, `statsmodels`/`linearmodels`, `pyfixest` for FE,
-  `scipy.optimize` for structural estimation; use a project virtual environment.
 
 ## Tables and figures
 
@@ -137,10 +113,3 @@ and figure with `make`. Prefer a Makefile to orchestrate everything.
   scratch script's output ends up in the paper, slides, or a memo, it is
   analysis — move it into `code/`/`scripts/` and follow the rules above.
 
-## Workflow
-
-- Keep theory, estimation, and counterfactual stages modular and separately
-  runnable; export to the designated output directories.
-- Name agent-generated memos `YYYYMMDDHHMM description.md`.
-- If stuck after a few attempts, stop and ask rather than flailing on errors.
-- Respect each project's own conventions and any `AGENTS.md`/`CLAUDE.md` rules.

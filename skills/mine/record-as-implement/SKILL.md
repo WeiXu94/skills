@@ -1,6 +1,7 @@
 ---
 name: record-as-implement
 description: Implement a spec while maintaining a session-scoped notes file of off-spec decisions, deviations, and tradeoffs.
+disable-model-invocation: true
 ---
 
 Implement the user's spec: $ARGUMENTS

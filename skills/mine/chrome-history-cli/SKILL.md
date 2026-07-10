@@ -1,6 +1,7 @@
 ---
 name: chrome-history-cli
 description: Search local Chrome browsing history exported by the History Trends Unlimited (HTU) extension. Use when the user asks "what was that page I visited about X?", "search my browsing history", "when did I last open Y?", or anything pointing at their own past Chrome activity. Works on TSV backups in ~/Downloads (htu_autobackup_*_incremental.tsv) — merges incrementals into a rolling combined master file, then searches with ripgrep. Do not use for live Chrome history (read the SQLite db directly) or for non-HTU exports.
+disable-model-invocation: true
 ---
 
 # Chrome History CLI
