@@ -1,9 +1,10 @@
 ---
-name: fable-consult
+name: claude-subagent-herdr
 description: Use when the user wants to consult "fable" or "Claude" for deep reasoning, planning, code review, or writing. Spawns Claude (fable/opus, high effort) as a Herdr agent target so the session is live-visible (attach, read, state) instead of hidden print output.
+disable-model-invocation: true
 ---
 
-# Fable Consult
+# Claude Subagent (Herdr)
 
 Spawns Claude as a Herdr agent target for full live visibility. Assumes you are already inside a Herdr session. Uses helper scripts in `scripts/` (relative to this file) so the read/cleanup mechanics don't need to be reasoned about each time.
 
