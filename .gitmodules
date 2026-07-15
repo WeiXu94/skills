@@ -1,3 +1,8 @@
 [submodule "skills/vendor/trystan-sa/claude-design-system-prompt"]
 	path = skills/vendor/trystan-sa/claude-design-system-prompt
 	url = https://github.com/Trystan-SA/claude-design-system-prompt
+[submodule "skills/mine/herdr-subagents"]
+	path = skills/mine/herdr-subagents
+	url = https://github.com/WeiXu94/herdr-subagents.git
+	branch = main
+	ignore = all
