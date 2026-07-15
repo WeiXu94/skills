@@ -40,6 +40,7 @@ The three `econ-paper-writing*` skills form a pipeline: `econ-paper-writing` is 
 | [chrome-history-cli](skills/mine/chrome-history-cli/SKILL.md) | Search local Chrome browsing history exported by the History Trends Unlimited extension. |
 | [netnewswire-cli](skills/mine/netnewswire-cli/SKILL.md) | Read/search/manage NetNewsWire (macOS RSS reader) via AppleScript + bash. Idea adapted from [netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp); reimplemented as a shell skill so no MCP server is needed. |
 | [zotero-cli](skills/mine/zotero-cli/SKILL.md) | `zot` — a two-command Python CLI for keyword + semantic search over a local Zotero library. Wraps the [`zotero-mcp`](https://github.com/54yyyu/zotero-mcp) ChromaDB index (delegates `update-db` to the upstream package). See also [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) for a fuller-featured Zotero CLI. |
+| [stata-cil](skills/mine/stata-cil/SKILL.md) | `statab` — batch-mode Stata wrapper that surfaces real `r(#)` exit codes (Stata's own `-e` often exits 0 on error). |
 
 ### Vendored upstream skills
 
@@ -71,7 +72,7 @@ From [tw93/Waza](https://github.com/tw93/Waza) (renamed `waza-*` for provenance)
 | Skill | Description |
 |-------|-------------|
 | [waza-learn](skills/vendor/waza/waza-learn/SKILL.md) | Six-phase research workflow turning unfamiliar domains or source bundles into publish-ready output. |
-| [waza-design](skills/vendor/waza/waza-design/SKILL.md) | Distinctive, production-grade UI for pages, components, typography, and screenshot-driven polish. |
+| [waza-ui](skills/vendor/waza/waza-ui/SKILL.md) | Distinctive, production-grade UI for pages, components, typography, and screenshot-driven polish. |
 | [waza-read](skills/vendor/waza/waza-read/SKILL.md) | Fetch and summarize URLs/PDFs, or convert them to clean Markdown for downstream work. |
 
 From [JimLiu/baoyu-skills](https://github.com/JimLiu/baoyu-skills):
@@ -110,7 +111,7 @@ Claude Code only looks one level deep for `SKILL.md`, so a grouped folder like `
 ```bash
 link-skills econ-paper-writing           # -> .claude/skills + .agents/skills (defaults)
 link-skills writing-shape claude         # single agent
-link-skills waza-design claude codex pi  # multiple agents at once
+link-skills waza-ui claude codex pi  # multiple agents at once
 ```
 
 Add `-g`/`--global` to link into your user-level dirs (`~/.claude/skills`, `~/.agents/skills`) instead of the current project:
@@ -179,6 +180,7 @@ Per-skill setup notes:
 - **netnewswire-cli** — macOS + NetNewsWire installed; uses AppleScript + bash, no extra deps.
 - **zotero-cli** — Python 3.10+, `zotero-mcp-server` installed in the same interpreter, Zotero desktop running with the local API enabled. See [`skills/mine/zotero-cli/README.md`](skills/mine/zotero-cli/README.md) for setup.
 - **matlab-econ-model-estimator** — MATLAB.
+- **stata-cil** — Stata installed (`stataMP` / `STATA_BIN`); bash 3.2+.
 
 ## Credits
 
@@ -186,6 +188,7 @@ Per-skill setup notes:
 - [jellllly420/netnewswire-mcp](https://github.com/jellllly420/netnewswire-mcp) for the original NetNewsWire-via-AppleScript idea.
 - [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) for the Zotero ChromaDB indexer that `zot` reuses.
 - [PiaoyangGuohai1/cli-anything-zotero](https://github.com/PiaoyangGuohai1/cli-anything-zotero) — related Zotero CLI project.
+- Brendan Halpin's batch-Stata exit-code idea — [blog post](http://teaching.sociology.ul.ie/bhalpin/wordpress/?p=122) — used by `stata-cil`/`statab`.
 
 ## License
 

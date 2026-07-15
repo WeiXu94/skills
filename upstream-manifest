@@ -9,6 +9,9 @@
 # it rewrites the skill's
 # SKILL.md `name:` field to match <dest-folder>, so you may rename freely (e.g.
 # learn -> waza-learn) and the skill stays valid AND re-syncable.
+#
+# A skill src may also be a single file (e.g. `SKILL.md` at repo root). Those
+# are extracted via `git show` — the rest of a large app repo is never checked out.
 
 repo  mattpocock  https://github.com/mattpocock/skills.git
 repo  waza        https://github.com/tw93/Waza.git
@@ -17,13 +20,13 @@ repo  karpathy      https://github.com/multica-ai/andrej-karpathy-skills.git
 repo  juliusbrussee https://github.com/JuliusBrussee/caveman.git
 repo  badlogic  https://github.com/badlogic/pi-skills.git
 repo  zhaoxuya520  https://github.com/zhaoxuya520/reverse-skill.git
+repo  ogulcancelik  https://github.com/ogulcancelik/herdr.git
 
 skill mattpocock  skills/in-progress/writing-beats                  writing-beats
 skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
 skill mattpocock  skills/engineering/diagnosing-bugs                diagnosing-bugs
 skill mattpocock  skills/engineering/codebase-design                codebase-design
 skill mattpocock  skills/productivity/writing-great-skills          writing-great-skills
-skill mattpocock  skills/in-progress/decision-mapping               decision-mapping
 skill mattpocock  skills/in-progress/writing-fragments              writing-fragments
 skill mattpocock  skills/in-progress/writing-shape                  writing-shape
 skill mattpocock  skills/productivity/grill-me                      grill-me
@@ -32,23 +35,26 @@ skill mattpocock  skills/engineering/grill-with-docs                grill-with-d
 skill mattpocock  skills/productivity/handoff                       handoff
 skill mattpocock  skills/engineering/setup-matt-pocock-skills       setup-matt-pocock-skills
 skill waza        skills/learn                                      waza-learn
-skill waza        skills/design                                     waza-design
+skill waza        skills/ui                                         waza-ui
 skill waza        skills/read                                       waza-read
 skill baoyu       skills/baoyu-diagram                              baoyu-diagram
 skill karpathy    skills/karpathy-guidelines                        karpathy-guidelines
 skill juliusbrussee skills/caveman                                  caveman
 skill mattpocock  skills/engineering/domain-modeling                domain-modeling
 skill mattpocock  skills/engineering/prototype                      prototype
-skill mattpocock  skills/engineering/to-prd                         to-prd
 skill badlogic  youtube-transcript  youtube-transcript
-skill mattpocock  skills/engineering/to-issues  to-issues
 skill mattpocock  skills/engineering/tdd  tdd
 skill mattpocock  skills/engineering/resolving-merge-conflicts  resolving-merge-conflicts
-skill mattpocock  skills/in-progress/review  review
+skill mattpocock  skills/engineering/code-review  code-review
 skill mattpocock  skills/engineering/implement  implement
 skill mattpocock  skills/engineering/triage  triage
 skill mattpocock  skills/engineering/ask-matt  ask-matt
 skill mattpocock  skills/productivity/teach  teach
+skill mattpocock  skills/engineering/wayfinder  wayfinder
+skill mattpocock  skills/in-progress/claude-handoff  claude-handoff
+skill mattpocock  skills/engineering/research  research
+skill mattpocock  skills/engineering/to-tickets  to-tickets
+skill mattpocock  skills/engineering/to-spec  to-spec
 skill zhaoxuya520  skills/api-security  api-security
 skill zhaoxuya520  skills/apk-reverse  apk-reverse
 skill zhaoxuya520  skills/attack-chain  attack-chain
@@ -70,3 +76,4 @@ skill zhaoxuya520  skills/pwn-chain  pwn-chain
 skill zhaoxuya520  skills/radare2  radare2
 skill zhaoxuya520  skills/reverse-engineering  reverse-engineering
 skill zhaoxuya520  skills/supply-chain-security  supply-chain-security
+skill ogulcancelik  SKILL.md  herdr

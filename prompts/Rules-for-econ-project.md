@@ -20,10 +20,11 @@
 - Across papers, build a comparison table (estimate, sign, magnitude, sample,
   method, identification) and note where findings conflict.
 - Literature lives under `<project>/literature/` as PDFs. Do NOT open PDFs with
-  the Read tool. Transcribe with `pdftotext` to
+  the Read tool. Transcribe with `lit parse` (LiteParse) to
   `<project>/literature/transcribed/<same-name>.txt` (keep the source filename,
-  swap `.pdf` for `.txt`), then `rg` for what you need. Read the abstract and
-  intro first, then decide whether to read the rest.
+  swap `.pdf` for `.txt`): `lit parse paper.pdf -o literature/transcribed/paper.txt`.
+  Then `rg` for what you need. Read the abstract and intro first, then decide
+  whether to read the rest. See https://developers.llamaindex.ai/liteparse/getting_started/.
 
 ## Language conventions
 

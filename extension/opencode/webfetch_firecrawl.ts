@@ -64,7 +64,7 @@ async function firecrawlScrape(body: unknown, signal: AbortSignal): Promise<any>
 
 export default tool({
 	description:
-		"Fetch a single URL and return its main content as clean markdown. Use when you already have a URL — the user pasted a link, said 'fetch/open/read this page', or you picked a websearch result to read in full. Powered by Firecrawl scrape (keyless). Returns full content with no truncation.",
+		"Fetch a single URL and return its main content as clean markdown. Use when you already have a URL — the user pasted a link, said 'fetch/open/read this page', or you picked a websearch_firecrawl result to read in full. Powered by Firecrawl scrape (keyless). Returns full content with no truncation.",
 	args: {
 		url: tool.schema.string().describe("The URL to fetch."),
 	},

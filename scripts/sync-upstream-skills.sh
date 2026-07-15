@@ -9,6 +9,10 @@
 # copy it rewrites the skill's SKILL.md `name:` to match <dest> (its immediate
 # parent dir), so renamed skills stay valid AND re-syncable.
 #
+# File-path sources (e.g. a root-level `SKILL.md` in an app repo) are supported:
+# the src field is the blob path (e.g. `SKILL.md`), and the skill is extracted
+# with `git show <sha>:<path>` so the rest of a large repo is never checked out.
+#
 # Usage:
 #   scripts/sync-upstream-skills.sh                # sync every manifest skill
 #   scripts/sync-upstream-skills.sh --stage        # sync AND git-add the dest folders
@@ -31,6 +35,14 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CACHE_ROOT="${UPSTREAM_SKILLS_CACHE:-$HOME/.cache/upstream-skills}"
 MANIFEST="${UPSTREAM_SKILLS_MANIFEST:-$REPO_ROOT/upstream-manifest}"
 VENDOR_DIR="$REPO_ROOT/skills/vendor"   # vendored skills land in <VENDOR_DIR>/<key>/<dest>/
+
+# True when the manifest src is a file blob path (currently: *.md), not a folder.
+is_file_src() {
+  case "$1" in
+    *.md|*.MD|*.Md) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 # Flags plus an optional positional filter: dest-folder names to restrict the
 # sync to (anything not starting with `-` that isn't a known flag).
@@ -73,17 +85,27 @@ if [ ${#FILTER[@]} -gt 0 ]; then
   echo "==> Restricting sync to: ${FILTER[*]}"
 fi
 
+# Per-repo tip SHA after probe/fetch — written as "$CACHE_ROOT/$key.sha" for
+# file-path skill extraction (no associative arrays; macOS /bin/bash is 3.2).
+
 # --- 1. per repo: create/refresh a slim mirror of the wanted paths ----------
 for repo in "${REPOS[@]}"; do
   read -r key url <<<"$repo"
   mirror="$CACHE_ROOT/$key"
 
-  paths=()
+  dir_paths=()
+  file_paths=()
   for entry in "${SKILLS[@]}"; do
     read -r ekey src _dst <<<"$entry"
-    [ "$ekey" = "$key" ] && paths+=("$src")
+    [ "$ekey" = "$key" ] || continue
+    if is_file_src "$src"; then
+      file_paths+=("$src")
+    else
+      dir_paths+=("$src")
+    fi
   done
-  [ ${#paths[@]} -eq 0 ] && continue
+  # Skip repos with no skills in the (possibly filtered) set.
+  [ ${#dir_paths[@]} -eq 0 ] && [ ${#file_paths[@]} -eq 0 ] && continue
 
   # Probe upstream once: default branch + tip SHA in a single network round-trip,
   # no objects downloaded.
@@ -96,25 +118,43 @@ for repo in "${REPOS[@]}"; do
     echo "==> [$key] creating slim mirror at $mirror"
     mkdir -p "$CACHE_ROOT"
     git clone --filter=blob:none --no-checkout --depth 1 "$url" "$mirror"
-    git -C "$mirror" sparse-checkout init --cone
+    # Cone sparse only matters when we have directory paths to materialize.
+    if [ ${#dir_paths[@]} -gt 0 ]; then
+      git -C "$mirror" sparse-checkout init --cone
+    fi
     local_sha=""
   else
     local_sha="$(git -C "$mirror" rev-parse HEAD 2>/dev/null || echo "")"
   fi
 
-  # Narrow the working tree to the wanted paths. In a partial clone this lazily
-  # fetches blobs for any newly-listed path, so it works even when we skip the
-  # full fetch below.
-  echo "==> [$key] sparse paths: ${paths[*]}"
-  git -C "$mirror" sparse-checkout set "${paths[@]}"
+  # Narrow the working tree to the wanted *directory* paths. File-path skills
+  # are extracted via `git show` and never need a sparse materialization — so a
+  # root-level SKILL.md in a huge app repo does not pull the whole tree.
+  if [ ${#dir_paths[@]} -gt 0 ]; then
+    echo "==> [$key] sparse paths: ${dir_paths[*]}"
+    # Mirrors created for file-only skills may not have sparse-checkout yet.
+    git -C "$mirror" sparse-checkout init --cone 2>/dev/null || true
+    git -C "$mirror" sparse-checkout set "${dir_paths[@]}"
+  else
+    echo "==> [$key] file-only skills: ${file_paths[*]} (no sparse checkout)"
+  fi
 
   if [ "$remote_sha" = "$local_sha" ]; then
     echo "==> [$key] up to date at ${remote_sha:0:12}; skipping fetch"
   else
     echo "==> [$key] upstream at ${remote_sha:0:12}; fetching $branch"
     git -C "$mirror" fetch --depth 1 origin "$branch"
-    git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
+    # For directory skills we need a checked-out worktree. For file-only skills
+    # pointing FETCH_HEAD is enough for `git show` — skip worktree materialize.
+    if [ ${#dir_paths[@]} -gt 0 ]; then
+      git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
+    else
+      git -C "$mirror" update-ref "refs/heads/$branch" "origin/$branch"
+      git -C "$mirror" symbolic-ref HEAD "refs/heads/$branch" 2>/dev/null || true
+    fi
   fi
+
+  printf '%s\n' "$remote_sha" > "$CACHE_ROOT/$key.sha"
 done
 
 # --- 2. copy each skill, flat, and normalize its name: field ---------------
@@ -123,16 +163,36 @@ MISSING=()   # skills whose upstream src path no longer exists (likely moved/ren
 for entry in "${SKILLS[@]}"; do
   read -r key src dst <<<"$entry"
   mirror="$CACHE_ROOT/$key"
-  if [ ! -d "$mirror/$src" ]; then
-    echo "!!  [$key] upstream path not found: $src"
-    echo "!!      did upstream move/rename it? update this skill's src (3rd field) in $MANIFEST"
-    echo "!!      kept existing skills/vendor/$key/$dst/ as-is (last good copy, not refreshed)"
-    MISSING+=("$key  $src  -> skills/vendor/$key/$dst")
-    continue
+  sha=""
+  [ -f "$CACHE_ROOT/$key.sha" ] && sha="$(cat "$CACHE_ROOT/$key.sha")"
+  [ -n "$sha" ] || sha="$(git -C "$mirror" rev-parse HEAD 2>/dev/null || echo "")"
+
+  if is_file_src "$src"; then
+    # Single-file skill (e.g. root SKILL.md): extract the blob only.
+    if [ -z "$sha" ] || ! git -C "$mirror" cat-file -e "$sha:$src" 2>/dev/null; then
+      echo "!!  [$key] upstream file not found: $src"
+      echo "!!      did upstream move/rename it? update this skill's src (3rd field) in $MANIFEST"
+      echo "!!      kept existing skills/vendor/$key/$dst/ as-is (last good copy, not refreshed)"
+      MISSING+=("$key  $src  -> skills/vendor/$key/$dst")
+      continue
+    fi
+    echo "    [$key] $src (file) -> skills/vendor/$key/$dst/"
+    mkdir -p "$VENDOR_DIR/$key"
+    rm -rf "$VENDOR_DIR/$key/$dst"
+    mkdir -p "$VENDOR_DIR/$key/$dst"
+    git -C "$mirror" show "$sha:$src" > "$VENDOR_DIR/$key/$dst/SKILL.md"
+  else
+    if [ ! -d "$mirror/$src" ]; then
+      echo "!!  [$key] upstream path not found: $src"
+      echo "!!      did upstream move/rename it? update this skill's src (3rd field) in $MANIFEST"
+      echo "!!      kept existing skills/vendor/$key/$dst/ as-is (last good copy, not refreshed)"
+      MISSING+=("$key  $src  -> skills/vendor/$key/$dst")
+      continue
+    fi
+    echo "    [$key] $src -> skills/vendor/$key/$dst/"
+    mkdir -p "$VENDOR_DIR/$key"
+    rsync -a --delete --exclude '.git' "$mirror/$src/" "$VENDOR_DIR/$key/$dst/"
   fi
-  echo "    [$key] $src -> skills/vendor/$key/$dst/"
-  mkdir -p "$VENDOR_DIR/$key"
-  rsync -a --delete --exclude '.git' "$mirror/$src/" "$VENDOR_DIR/$key/$dst/"
 
   # Make the skill valid even if renamed: name: must equal its dest folder
   # (the immediate parent dir, which is $dst — the upstream <key> level does

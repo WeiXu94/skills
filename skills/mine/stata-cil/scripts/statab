@@ -1,0 +1,407 @@
+#!/usr/bin/env bash
+# =============================================================================
+# statab — batch-mode Stata wrapper with trustworthy exit codes
+# =============================================================================
+# Stata's -b/-e modes often exit 0 even when a do-file hits r(#) errors.
+# This wrapper runs Stata, then scans the log for the canonical error trailer
+# "^r([0-9]+);$" and returns non-zero when one is found after user code.
+#
+# Idea adapted from Brendan Halpin:
+#   http://teaching.sociology.ul.ie/bhalpin/wordpress/?p=122
+#
+# Compatible with macOS /bin/bash 3.2.
+# Empirically verified on StataMP (macOS app bundle) with:
+#   - plain do-files, implied `do`, bare commands
+#   - paths with spaces (literal quotes inside the path argv entry)
+#   - sysprofile.do that emits a spurious r(199); before user code
+#
+# Usage:
+#   statab do myfile.do [args...]
+#   statab myfile.do              # "do" is implied for a single .do file
+#   statab -h | --help | help
+#
+# Environment:
+#   STATA_BIN          Path/name of the Stata binary (default: search order)
+#   STATAB_KEEP_LOG=1  Keep the log file even on success
+# =============================================================================
+
+set -u
+
+# How this script was invoked (statab / statab.sh / path)
+PROG="$(basename "$0")"
+
+# ---------------------------------------------------------------------------
+# Defaults / config
+# ---------------------------------------------------------------------------
+STATA_BIN="${STATA_BIN:-}"
+KEEP_LOG="${STATAB_KEEP_LOG:-0}"
+VERBOSE=0
+
+# ---------------------------------------------------------------------------
+# help
+# ---------------------------------------------------------------------------
+usage() {
+    # $0 may be statab, statab.sh, or a path — show the basename users typed.
+    local me
+    me="$(basename "$0")"
+    cat <<EOF
+${me} — run Stata in batch mode and surface trustworthy exit codes
+
+USAGE
+  ${me} [options] do <file.do> [stata-args...]
+  ${me} [options] <file.do>              # implies: do <file.do>
+  ${me} [options] <stata-command...>     # logs to stata.log
+
+OPTIONS
+  -h, --help, help     Show this help and exit
+  -k, --keep-log       Keep the log file after a successful run
+  -v, --verbose        Print the Stata invocation before running
+  --stata <path>       Stata binary to use (overrides \$STATA_BIN)
+
+ENVIRONMENT
+  STATA_BIN            Default Stata binary (default search order below)
+  STATAB_KEEP_LOG=1    Same as --keep-log
+
+EXIT CODES
+  0   Success (no r(#); trailer in the user section of the log)
+  1   Stata reported an r(#) error in the log (or expected log missing)
+  2   Usage / argument error
+  127 Stata binary not found
+  *   Propagated non-zero exit from the Stata process itself
+
+NOTES
+  - On error, the matching log lines are printed and the log is kept.
+  - On success, the log is removed unless --keep-log / STATAB_KEEP_LOG is set.
+  - Stata is invoked with -e -q (batch ASCII log, quiet init, exit when done).
+  - Binary search order: \$STATA_BIN, stataMP, stata-mp, StataMP, stata-se,
+    stataSE, stata, then common macOS app-bundle paths.
+  - Errors emitted only by sysprofile.do / profile.do (before user code) are
+    ignored so a broken profile line does not fail every run.
+  - Paths with spaces: shell keeps one argv entry; this script embeds Stata
+    double quotes inside that entry (Stata re-tokenizes argv). Log stem is
+    truncated at the first space: "foo bar.do" → foo.log (Stata's rule).
+
+EXAMPLES
+  ${me} do analysis.do
+  ${me} analysis.do
+  ${me} --keep-log do cli_build_proj_mlib.do
+  STATA_BIN=stata-mp ${me} do foo.do
+  ${me} --stata /Applications/Stata/StataMP.app/Contents/MacOS/stataMP do foo.do
+  ${me} do "my project/run.do"
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# resolve_stata_bin — pick an executable Stata binary
+# ---------------------------------------------------------------------------
+resolve_stata_bin() {
+    # Bash 3.2: avoid empty arrays under set -u; use a newline-separated list.
+    local list candidate
+    list=""
+    if [ -n "$STATA_BIN" ]; then
+        list="${STATA_BIN}
+"
+    fi
+    list="${list}stataMP
+stata-mp
+StataMP
+stata-se
+stataSE
+stata
+/Applications/Stata/StataMP.app/Contents/MacOS/stataMP
+/Applications/Stata/StataSE.app/Contents/MacOS/stataSE
+/Applications/Stata/Stata.app/Contents/MacOS/stata
+"
+
+    while IFS= read -r candidate; do
+        [ -z "$candidate" ] && continue
+        if command -v "$candidate" >/dev/null 2>&1; then
+            command -v "$candidate"
+            return 0
+        fi
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done <<EOF
+$list
+EOF
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# log_name_for_dofile — mimic Stata's log naming for `do "path/file.do"`
+#   basename without .do, then truncate at first space like Stata:
+#   (stataMP -e do "foo bar.do" -> foo.log)
+#   Caveat: "foo bar.do" and "foo baz.do" both map to foo.log (Stata's rule).
+# ---------------------------------------------------------------------------
+log_name_for_dofile() {
+    local dofile="$1"
+    local base
+    base="$(basename "$dofile" .do)"
+    printf '%s.log\n' "${base%% *}"
+}
+
+# ---------------------------------------------------------------------------
+# stata_path_arg PATH
+# Stata re-tokenizes each argv entry even when the shell already preserved
+# spaces as one argument. Verified on StataMP macOS:
+#   stataMP -e -q do "foo bar.do"     # shell-quoted only → looks for foo.do
+#   stataMP -e -q do '"foo bar.do"'   # literal quotes inside argv → works
+# So a path with spaces must be ONE argv whose *contents* include Stata
+# double quotes. Escape embedded \ and " first.
+# ---------------------------------------------------------------------------
+stata_path_arg() {
+    local p="$1"
+    case "$p" in
+        *' '*|*'"'*|*\\*)
+            # shellcheck disable=SC2001
+            p="$(printf '%s' "$p" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+            printf '"%s"\n' "$p"
+            ;;
+        *)
+            printf '%s\n' "$p"
+            ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
+# parse leading options / help
+# ---------------------------------------------------------------------------
+if [ "$#" -eq 0 ]; then
+    usage >&2
+    exit 2
+fi
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help|help)
+            usage
+            exit 0
+            ;;
+        -k|--keep-log)
+            KEEP_LOG=1
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            shift
+            ;;
+        --stata)
+            if [ "$#" -lt 2 ]; then
+                echo "${PROG}: --stata requires a path argument" >&2
+                exit 2
+            fi
+            STATA_BIN="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "${PROG}: unknown option: $1" >&2
+            echo "Try '${PROG} --help' for usage." >&2
+            exit 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ "$#" -eq 0 ]; then
+    echo "${PROG}: missing Stata command or do-file" >&2
+    echo "Try '${PROG} --help' for usage." >&2
+    exit 2
+fi
+
+# ---------------------------------------------------------------------------
+# Build Stata argv + expected log file
+# ---------------------------------------------------------------------------
+# mode:
+#   dofile  — run a do-file (explicit `do` or implied from a single *.do path)
+#   raw     — pass remaining tokens through as a bare Stata command
+#
+# For do-files we rebuild argv as separate entries:
+#   stataMP -e -q do <path-arg> [args...]
+# A single joined string like 'do "foo bar.do"' is wrong (log becomes do.log).
+# path-arg uses stata_path_arg so spaces survive Stata's re-tokenization.
+#
+# raw mode always expects stata.log. If the bare command itself `do`s a file,
+# Stata may write a different log name — that case is unsupported; pass
+# `do file.do` explicitly instead.
+mode="raw"
+log="stata.log"
+dofile=""
+
+case "$1" in
+    do)
+        if [ "$#" -lt 2 ]; then
+            echo "${PROG}: 'do' requires a do-file argument" >&2
+            exit 2
+        fi
+        if [ ! -f "$2" ]; then
+            echo "${PROG}: do-file not found: $2" >&2
+            exit 2
+        fi
+        mode="dofile"
+        dofile="$2"
+        log="$(log_name_for_dofile "$dofile")"
+        shift 2
+        # Remaining "$@" are do-file arguments
+        ;;
+    *.do)
+        # Single .do path: imply `do` (Stata itself requires the keyword)
+        if [ "$#" -eq 1 ]; then
+            if [ ! -f "$1" ]; then
+                echo "${PROG}: do-file not found: $1" >&2
+                exit 2
+            fi
+            mode="dofile"
+            dofile="$1"
+            log="$(log_name_for_dofile "$dofile")"
+            shift
+        fi
+        # else: multiple tokens starting with *.do — pass through raw
+        ;;
+    *)
+        mode="raw"
+        log="stata.log"
+        ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Locate Stata
+# ---------------------------------------------------------------------------
+stata_bin=""
+if ! stata_bin="$(resolve_stata_bin)"; then
+    echo "${PROG}: could not find a Stata binary." >&2
+    echo "Set STATA_BIN or pass --stata <path>." >&2
+    exit 127
+fi
+
+# ---------------------------------------------------------------------------
+# Run Stata
+# ---------------------------------------------------------------------------
+# Flags:
+#   -q  suppress initialization messages
+#   -e  batch mode, ASCII log, exit when command finishes (no prompt)
+#
+# Bash 3.2 + set -u: never expand an empty array — branch on mode and arg count.
+# Capture combined stdout+stderr: batch mode is normally silent on the console;
+# non-empty output usually means usage text or a fatal startup message.
+path_arg=""
+if [ "$mode" = "dofile" ]; then
+    path_arg="$(stata_path_arg "$dofile")"
+fi
+
+if [ "$VERBOSE" -eq 1 ]; then
+    if [ "$mode" = "dofile" ]; then
+        echo "+ $stata_bin -e -q do $path_arg $*" >&2
+    else
+        echo "+ $stata_bin -e -q $*" >&2
+    fi
+fi
+
+console=""
+rc=0
+if [ "$mode" = "dofile" ]; then
+    if [ "$#" -gt 0 ]; then
+        console="$("$stata_bin" -e -q do "$path_arg" "$@" 2>&1)"
+        rc=$?
+    else
+        console="$("$stata_bin" -e -q do "$path_arg" 2>&1)"
+        rc=$?
+    fi
+else
+    console="$("$stata_bin" -e -q "$@" 2>&1)"
+    rc=$?
+fi
+
+# Prefer the log when it exists. Only treat console output as a hard startup
+# failure when there is no log to scan (usage text, binary missing mid-run, etc.).
+if [ -n "$console" ]; then
+    printf '%s\n' "$console" >&2
+    if [ ! -f "$log" ]; then
+        exit "$rc"
+    fi
+    # Log present: fall through to r(#) scan (console may still be useful noise).
+fi
+
+if [ "$rc" -ne 0 ] && [ ! -f "$log" ]; then
+    exit "$rc"
+fi
+
+# Process returned non-zero but left a log — still scan it; prefer r(#) signal.
+# If no r(#) and rc != 0, propagate rc at the end.
+
+# ---------------------------------------------------------------------------
+# Scan log for Stata error trailer: r(###);
+#
+# Stata batch mode often exits 0 even on r(#) errors, so we must read the log.
+# Installs that run sysprofile.do / profile.do first may emit a spurious r(#);
+# before any user code (this machine: "command r is unrecognized" / r(199);).
+# Those must not look like a failed do-file.
+#
+# Rules (awk; bash-3.2-safe):
+#   start   - leading blanks; "Running ..." enters profile mode
+#   profile - skip entire profile block until the next blank line
+#   user    - real session output; remember the last r(#); (+ previous line)
+#
+# Limitation: profile mode ends at the *first* blank line after "Running ...".
+# A profile that prints blank lines mid-block can leak later profile r(#);
+# into the user section. Typical sysprofile.do does not do this.
+# ---------------------------------------------------------------------------
+if [ ! -f "$log" ]; then
+    echo "${PROG}: expected log file missing: $log" >&2
+    exit 1
+fi
+
+# awk exits 1 when a post-profile r(#); is found; prints the hit for the user.
+if awk '
+    BEGIN {
+        mode = "start"
+        prev = ""
+        err_prev = ""
+        err_line = ""
+    }
+    mode == "start" {
+        if (NF == 0) { prev = $0; next }
+        if (/^Running /) { mode = "profile"; prev = $0; next }
+        mode = "user"
+    }
+    mode == "profile" {
+        # Ends at first blank line after "Running ..." (see Limitation above).
+        if (NF == 0) { mode = "user"; prev = $0; next }
+        prev = $0
+        next
+    }
+    # mode == user
+    /^r\([0-9]+\);$/ {
+        err_prev = prev
+        err_line = $0
+    }
+    { prev = $0 }
+    END {
+        if (err_line != "") {
+            if (err_prev != "") print err_prev
+            print err_line
+            exit 1
+        }
+        exit 0
+    }
+' "$log"
+then
+    : # no r(#); in user section
+else
+    # Keep the log so the caller can inspect the full trace
+    exit 1
+fi
+
+if [ "$KEEP_LOG" -eq 0 ]; then
+    rm -f -- "$log"
+fi
+
+# Propagate a non-zero process exit even when the log looks clean.
+exit "$rc"

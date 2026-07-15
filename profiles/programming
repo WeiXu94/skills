@@ -5,22 +5,24 @@
 # --- engineering (all skills under mattpocock/skills/engineering) ---
 ask-matt
 codebase-design
+code-review
 diagnosing-bugs
 domain-modeling
 grill-with-docs
 implement
 improve-codebase-architecture
 prototype
+research
 resolving-merge-conflicts
 setup-matt-pocock-skills
 tdd
-to-issues
-to-prd
+to-spec
+to-tickets
 triage
+wayfinder
 
 # --- in-progress ---
-review
+claude-handoff
 
 # --- other ---
-decision-mapping
 karpathy-guidelines

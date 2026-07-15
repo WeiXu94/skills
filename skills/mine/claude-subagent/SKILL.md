@@ -2,6 +2,9 @@
 name: claude-subagent
 description: Spawns Claude Code (claude-cli) with the default fable model (high effort) in print mode as a sub-agent for planning, code review, academic writing, or any advanced reasoning task. Use when the user wants a deep-reasoning subagent via the Claude CLI.
 disable-model-invocation: true
+metadata:
+  opencode/slash: true
+  opencode/autoinvoke: false
 ---
 
 # Claude Subagent

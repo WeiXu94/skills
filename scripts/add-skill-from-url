@@ -10,20 +10,27 @@
 #
 # Accepted URL shapes:
 #   https://github.com/<owner>/<repo>/blob/<branch>/<path>/SKILL.md
+#   https://github.com/<owner>/<repo>/blob/<branch>/SKILL.md   (root-level skill)
 #   https://github.com/<owner>/<repo>/tree/<branch>/<path>
 #   https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>/SKILL.md
+#   https://raw.githubusercontent.com/<owner>/<repo>/<branch>/SKILL.md
 #
 # Usage:
 #   scripts/add-skill-from-url <url> [dest-folder]
 #   scripts/add-skill-from-url --no-sync <url> [dest-folder]
 #
 #   dest-folder  override the vendored folder name (defaults to the skill's own
-#                folder name, e.g. domain-modeling). Use it to rename on import.
+#                folder name, e.g. domain-modeling; for a root-level SKILL.md,
+#                defaults to the repo name). Use it to rename on import.
 #   --no-sync    only edit the manifest; skip the sync (handy when adding many
 #                skills in a row, then syncing once at the end).
 #
 # The repo-key is reused if a `repo` line already points at the same GitHub
 # repo; otherwise a new key (the lower-cased owner) is added.
+#
+# Root-level SKILL.md is stored in the manifest as src path `SKILL.md` (a file,
+# not a folder). sync-upstream-skills.sh extracts just that blob — it does not
+# sparse-checkout the whole app repo.
 
 set -euo pipefail
 
@@ -68,12 +75,17 @@ case "$host" in
     ;;
 esac
 
-# Drop a trailing slash, then a trailing /SKILL.md if the URL named the file.
+# Drop a trailing slash, then a trailing /SKILL.md if the URL named the file
+# inside a folder. A bare root-level SKILL.md stays as the file path `SKILL.md`
+# so the sync script can extract just that blob.
 skillpath="${skillpath%/}"
+ROOT_SKILL=0
 case "$skillpath" in
   */SKILL.md|*/SKILL.MD|*/Skill.md) skillpath="${skillpath%/*}" ;;
   SKILL.md|SKILL.MD|Skill.md)
-    echo "Error: URL points at a top-level SKILL.md with no skill folder" >&2; exit 1 ;;
+    skillpath="SKILL.md"
+    ROOT_SKILL=1
+    ;;
 esac
 
 if [ -z "$owner" ] || [ -z "$repo" ] || [ -z "$skillpath" ]; then
@@ -82,7 +94,14 @@ if [ -z "$owner" ] || [ -z "$repo" ] || [ -z "$skillpath" ]; then
 fi
 
 repo="${repo%.git}"
-dest="${DEST_OVERRIDE:-${skillpath##*/}}"
+# Root-level skill has no parent folder — default dest to the repo name.
+if [ -n "$DEST_OVERRIDE" ]; then
+  dest="$DEST_OVERRIDE"
+elif [ "$ROOT_SKILL" = 1 ]; then
+  dest="$repo"
+else
+  dest="${skillpath##*/}"
+fi
 giturl="https://github.com/$owner/$repo.git"
 
 # --- find or create the repo-key in the manifest ----------------------------
