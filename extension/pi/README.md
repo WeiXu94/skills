@@ -7,6 +7,20 @@ this skills repo. Each file is a self-contained extension — drop it into
 
 ## Extensions
 
+### [`cd.ts`](./cd.ts)
+
+Registers `/cd` to move the live session into another directory/repo without
+quitting pi.
+
+- `/cd` — print current session cwd
+- `/cd <path>` — fork history into a new session whose cwd is `<path>`, then
+  switch onto it (tools/skills/AGENTS.md reload for the new project)
+- `/cd --new <path>` — same, but start a fresh session (no history copy)
+
+Uses `SessionManager.forkFrom` + `ctx.switchSession`. Creates a new session
+file under the target cwd's session dir; the old session file is left intact.
+Supports `~` and relative paths; directory-path argument completions included.
+
 ### [`retry.ts`](./retry.ts)
 
 Retries assistant errors by type, using an extensible `ERROR_TYPES` registry.
