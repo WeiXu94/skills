@@ -1,0 +1,745 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+pdfxtract.py — a single-file CLI that gets the BEST OF BOTH pdf-extraction worlds.
+
+WHY TWO TOOLS?
+--------------
+Two very different PDF-to-text tools excel at different things:
+
+  * pdftotext  (poppler)   -> FIDELITY. It reads the PDF's embedded text layer and
+                              preserves exact glyphs: real Unicode math ("−", "≥",
+                              subscripts) and correct accented names ("Gutiérrez",
+                              "Garcı́a-Santana"). Its weakness: it hard-wraps every
+                              line to the PDF's visual layout, so prose comes back
+                              broken mid-sentence and there is no document structure.
+
+  * liteparse  (npm)        -> STRUCTURE + OCR. It emits Markdown with real headings,
+                              flowing paragraphs and page separators, and it can OCR
+                              scanned/image PDFs. Its weakness: for born-digital PDFs
+                              it *corrupts* technical content — it injects stray
+                              Markdown into equations (e.g. "z *-k(t)*", "~~...~~")
+                              and mangles diacritics ("Guti´errez").
+
+KEY INSIGHT
+-----------
+pdftotext's flaw (hard line-wraps) is mechanical and reversible; liteparse's flaws
+(mangled equations/accents) are lossy corruptions you cannot repair without the
+original. So: use liteparse as the MAP (headings, page breaks, OCR fallback) and
+pdftotext as the TERRITORY (the text you actually read/quote), then stitch them
+together. The disagreement between the two is itself a free QA signal that flags
+equation regions (trust pdftotext) and scanned regions (trust liteparse OCR).
+
+THE PIPELINE
+------------
+  Stage 0  classify     `liteparse is-complex` + pdftotext char-count  -> digital|scanned
+  Stage 1  extract      pdftotext -layout (fidelity) + liteparse markdown (structure)
+  Stage 2  index        parse liteparse Markdown headings into an ordered TOC
+  Stage 3  reflow       de-hyphenate + rejoin pdftotext's hard-wrapped lines into
+                        paragraphs (an indented line = a new paragraph start)
+  Stage 4  merge        locate each TOC heading inside the faithful pdftotext text and
+                        inject Markdown headings -> faithful text, real structure
+  Stage 5  QA           record mode, char counts, matched/unmatched headers, and
+                        count liteparse's equation-corruption artifacts
+
+OUTPUTS (in --outdir, default "<pdf-stem>_pdfxtract/")
+------------------------------------------------------
+  merged.md              THE deliverable: faithful pdftotext text under Markdown headings
+  content.reflowed.txt   pdftotext reflowed into paragraphs (easy reading)
+  content.raw.txt        verbatim pdftotext -layout (maximum fidelity; equations live here)
+  structure.md           raw liteparse Markdown (structure / OCR output)
+  toc.md                 table of contents
+  report.json            classification + QA report (machine readable)
+
+USAGE
+-----
+  # full run (auto-detects digital vs scanned)
+  ./pdfxtract.py paper.pdf
+
+  # just print the table of contents
+  ./pdfxtract.py paper.pdf --toc
+
+  # dump one section's faithful text by (sub)string of its title
+  ./pdfxtract.py paper.pdf --section "policy implications"
+
+  # quick test on the first 10 pages
+  ./pdfxtract.py paper.pdf --max-pages 10 --verbose
+
+  # build merged.md from raw (un-reflowed) pdftotext if you fear reflow touched equations
+  ./pdfxtract.py paper.pdf --no-reflow
+
+Only the Python standard library is used; the tool shells out to the external
+`pdftotext` and `liteparse` binaries (both must be on PATH).
+"""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import json
+import re
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass, field, asdict
+from pathlib import Path
+
+# --------------------------------------------------------------------------- #
+# Tunable constants (documented so behaviour is predictable / easy to adjust) #
+# --------------------------------------------------------------------------- #
+
+# A page whose extracted text is shorter than this many characters is treated as
+# "probably an image / needs OCR" during classification. Normal text pages are
+# typically > 500 chars; figure-only or scanned pages are far lower.
+MIN_TEXT_CHARS_PER_PAGE = 80
+
+# If more than this fraction of pages look image-like, we classify the whole
+# document as "scanned" and promote liteparse (OCR) to the primary source.
+SCANNED_PAGE_FRACTION = 0.5
+
+# Minimum fuzzy-match score (difflib ratio, 0..1) for a TOC heading to be
+# considered "found" at a given content line. 0.70 tolerates numbering/spacing
+# differences without matching unrelated body text.
+MATCH_THRESHOLD = 0.70
+
+# Headings are short; never try to match a heading against a content line longer
+# than this many characters (prevents latching onto a sentence in the body).
+MAX_HEADING_LINE_CHARS = 90
+
+# Regex for liteparse's tell-tale equation-corruption signatures, used purely for
+# the QA report so the user knows where NOT to trust the Markdown output:
+#   ~~...~~            -> strikethrough it injected into a formula
+#   " *", "* ", "*-"   -> stray italic markers glued to math tokens ("z *-k(t)*")
+MATH_ARTIFACT_RE = re.compile(r"(~~)|(\*\s*[-−=+^_/])|([-−=+^_/]\s*\*)")
+
+# A pure page-number line in pdftotext -layout output: optional surrounding
+# whitespace around a 1-4 digit number and nothing else. These get dropped.
+PAGE_NUMBER_RE = re.compile(r"^\s*\d{1,4}\s*$")
+
+# Leading section number on a heading, e.g. "1", "2.2", "2.2.1".
+SECTION_NUMBER_RE = re.compile(r"^(\d+(?:\.\d+)*)\b")
+
+# A numbered section header followed by its title, e.g. "2 Stylized Facts",
+# "2.2 Main results". Used as a *fallback* break-detector during reflow for
+# headers the liteparse TOC might have missed (e.g. appendix sections).
+NUMBERED_HEADING_RE = re.compile(r"^(\d+(?:\.\d+)*)\s+(\S.*)$")
+
+# Markdown heading line in liteparse output: 1-6 '#' then the title.
+MD_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
+
+
+# --------------------------------------------------------------------------- #
+# Data containers                                                             #
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class Heading:
+    """One entry in the table of contents extracted from liteparse Markdown."""
+
+    level: int          # Markdown nesting level 1..6 (also derived from numbering)
+    title: str          # heading text exactly as liteparse emitted it
+    line_no: int        # 1-based line number inside structure.md
+    content_idx: int = -1  # index of the matching line in the faithful text (-1 = not found)
+
+
+@dataclass
+class Report:
+    """Machine-readable summary written to report.json."""
+
+    input: str
+    mode: str = "unknown"                # "digital" | "scanned"
+    pages: int = 0
+    pages_needing_ocr: int = 0
+    recommendation: str = ""             # which tool to trust as primary
+    pdftotext_chars: int = 0
+    liteparse_chars: int = 0
+    toc_headers: int = 0
+    matched_headers: int = 0
+    unmatched_headers: list[str] = field(default_factory=list)
+    liteparse_math_artifact_lines: int = 0
+    artifact_examples: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# Small process helpers                                                       #
+# --------------------------------------------------------------------------- #
+
+
+def log(msg: str, verbose: bool) -> None:
+    """Print a diagnostic line only when --verbose is set."""
+    if verbose:
+        print(f"[pdfxtract] {msg}", file=sys.stderr)
+
+
+def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
+    """Run an external command, capturing output, never raising on non-zero exit."""
+    return subprocess.run(cmd, capture_output=True, text=True, **kwargs)
+
+
+def require_binaries() -> None:
+    """Abort early with a helpful message if either external tool is missing."""
+    missing = [b for b in ("pdftotext", "liteparse") if shutil.which(b) is None]
+    if missing:
+        sys.exit(
+            "error: missing required binary(ies) on PATH: "
+            + ", ".join(missing)
+            + "\n  pdftotext: brew install poppler\n  liteparse: npm i -g liteparse"
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Stage 0 — classify the PDF (digital text layer vs scanned/image)            #
+# --------------------------------------------------------------------------- #
+
+
+def classify(pdf: Path, max_pages: int | None, verbose: bool) -> tuple[str, int, int]:
+    """
+    Decide whether the PDF has a usable text layer ("digital") or needs OCR
+    ("scanned"). Returns (mode, total_pages, pages_needing_ocr).
+
+    Two independent signals are combined:
+      1. `liteparse is-complex` per-page JSON (needsOcr / isGarbled flags).
+      2. A cheap `pdftotext` char-count probe — scanned PDFs yield ~no text.
+    """
+    pages_needing_ocr = 0
+    total_pages = 0
+
+    # Signal 1: ask liteparse for a per-page complexity report (compact JSON array).
+    cmd = ["liteparse", "is-complex", str(pdf), "--compact", "-q"]
+    if max_pages:
+        cmd += ["--max-pages", str(max_pages)]
+    # NOTE: `liteparse is-complex` may exit non-zero even when it emits a valid
+    # per-page JSON array on stdout, so we key off the *content*, not the rc.
+    proc = run(cmd)
+    if proc.stdout.strip():
+        try:
+            per_page = json.loads(proc.stdout)
+            total_pages = len(per_page)
+            for p in per_page:
+                # A page "needs OCR" if liteparse says so, if it flagged garbled
+                # text, or if the extracted text is suspiciously short (image page).
+                needs = (
+                    p.get("needsOcr")
+                    or p.get("isGarbled")
+                    or p.get("fullPageImage")
+                    or (p.get("textLength", 0) < MIN_TEXT_CHARS_PER_PAGE)
+                )
+                if needs:
+                    pages_needing_ocr += 1
+        except json.JSONDecodeError:
+            log("is-complex output was not valid JSON; falling back to char probe", verbose)
+
+    # Signal 2: cheap text-layer probe via pdftotext (first/max pages only).
+    probe = run(["pdftotext"] + (["-l", str(max_pages)] if max_pages else []) + [str(pdf), "-"])
+    probe_chars = len(probe.stdout.strip())
+    log(f"classify: pages={total_pages} ocr_needed={pages_needing_ocr} pdftotext_probe_chars={probe_chars}", verbose)
+
+    # Decision: if pdftotext found essentially nothing, it is scanned regardless
+    # of the per-page flags. Otherwise use the fraction of image-like pages.
+    if probe_chars < MIN_TEXT_CHARS_PER_PAGE:
+        mode = "scanned"
+    elif total_pages and pages_needing_ocr / total_pages > SCANNED_PAGE_FRACTION:
+        mode = "scanned"
+    else:
+        mode = "digital"
+
+    return mode, total_pages, pages_needing_ocr
+
+
+# --------------------------------------------------------------------------- #
+# Stage 1 — extract with both tools                                           #
+# --------------------------------------------------------------------------- #
+
+
+def extract_pdftotext(pdf: Path, out: Path, max_pages: int | None, verbose: bool) -> int:
+    """Run `pdftotext -layout` (fidelity source) and return the char count."""
+    cmd = ["pdftotext", "-layout"]
+    if max_pages:
+        cmd += ["-l", str(max_pages)]   # -l N = stop after page N
+    cmd += [str(pdf), str(out)]
+    proc = run(cmd)
+    if proc.returncode != 0:
+        log(f"pdftotext failed: {proc.stderr.strip()}", verbose)
+    text = out.read_text(encoding="utf-8", errors="replace")
+    log(f"pdftotext -> {out.name} ({len(text)} chars)", verbose)
+    return len(text)
+
+
+def extract_liteparse(pdf: Path, out: Path, max_pages: int | None, verbose: bool) -> int:
+    """Run `liteparse parse --format markdown` (structure / OCR source)."""
+    cmd = ["liteparse", "parse", str(pdf), "--format", "markdown", "-o", str(out), "-q"]
+    if max_pages:
+        cmd += ["--max-pages", str(max_pages)]
+    proc = run(cmd)
+    if proc.returncode != 0:
+        log(f"liteparse failed: {proc.stderr.strip()}", verbose)
+    text = out.read_text(encoding="utf-8", errors="replace") if out.exists() else ""
+    log(f"liteparse -> {out.name} ({len(text)} chars)", verbose)
+    return len(text)
+
+
+# --------------------------------------------------------------------------- #
+# Stage 2 — build the table of contents from liteparse Markdown               #
+# --------------------------------------------------------------------------- #
+
+
+def heading_level(raw_title: str, md_level: int) -> int:
+    """
+    Derive a consistent nesting level for a heading.
+
+    We trust the *section number* over liteparse's '#' count, because liteparse
+    is inconsistent (it once emitted a subsection as h6 and a top section as h4).
+    Numbering maps cleanly: "1" -> 1, "2.2" -> 2, "2.2.1" -> 3. Un-numbered
+    headings (Abstract, References, the title) keep liteparse's level.
+    """
+    m = SECTION_NUMBER_RE.match(raw_title.strip())
+    if m:
+        depth = m.group(1).count(".") + 1   # "2.2.1" has two dots -> level 3
+        return min(depth, 6)
+    return max(1, min(md_level, 6))
+
+
+def build_toc(structure_md: Path) -> list[Heading]:
+    """Parse Markdown heading lines (#{1,6}) from liteparse output into a TOC."""
+    toc: list[Heading] = []
+    if not structure_md.exists():
+        return toc
+    for i, line in enumerate(structure_md.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
+        m = MD_HEADING_RE.match(line)
+        if not m:
+            continue
+        md_level = len(m.group(1))
+        title = m.group(2).strip()
+        toc.append(Heading(level=heading_level(title, md_level), title=title, line_no=i))
+    return toc
+
+
+def toc_to_markdown(toc: list[Heading]) -> str:
+    """Render the TOC as an indented Markdown list for toc.md."""
+    lines = ["# Table of Contents", ""]
+    for h in toc:
+        indent = "  " * (h.level - 1)
+        lines.append(f"{indent}- {h.title}")
+    return "\n".join(lines) + "\n"
+
+
+# --------------------------------------------------------------------------- #
+# Stage 3 — reflow pdftotext's hard-wrapped lines into paragraphs             #
+# --------------------------------------------------------------------------- #
+
+
+def is_heading_like(stripped: str) -> bool:
+    """
+    Fallback test: does a (left-stripped) line look like a numbered section
+    header, e.g. "7 Extensions"? Requires a leading section number and a
+    title-like tail (short, or beginning with a capital letter) so that an
+    ordinary body line that merely starts with a number ("10% of firms",
+    "3 firms entered the market ...") is NOT mistaken for a header.
+    """
+    m = NUMBERED_HEADING_RE.match(stripped)
+    if not m:
+        return False
+    tail = m.group(2)
+    return len(stripped) < 60 or (bool(tail) and tail[0].isupper())
+
+
+def _is_break_line(stripped: str, heading_norms: set[str]) -> bool:
+    """
+    Decide whether a flush-left line should START a new paragraph (i.e. is a
+    section header rather than a wrapped continuation of the previous one).
+
+    Two signals, in order of precision:
+      1. Ground truth: its normalised text is a known TOC title from liteparse.
+      2. Heuristic fallback: it looks like a numbered header (is_heading_like).
+    """
+    if heading_norms and _norm(stripped) in heading_norms:
+        return True
+    return is_heading_like(stripped)
+
+
+def _looks_like_soft_hyphen(buffer: str, nxt: str) -> bool:
+    """
+    True if a trailing '-' on `buffer` is a soft hyphen splitting a word across
+    lines (e.g. "thick-" + "ens"), rather than a real hyphenated compound.
+
+    Heuristic: a lowercase letter before the '-' and a lowercase letter starting
+    the next line. That pattern almost always means a wrapped word.
+    """
+    return bool(buffer) and buffer[-1] == "-" and bool(nxt) and nxt[0].islower() and buffer[-2:-1].islower()
+
+
+def reflow_page(page_text: str, heading_norms: set[str]) -> str:
+    """
+    Rejoin one page's hard-wrapped lines into flowing paragraphs.
+
+    The rule exploits pdftotext -layout's formatting: within a justified
+    paragraph only the FIRST line is indented; continuation lines start at the
+    left margin. Therefore:
+      * a line WITH leading whitespace            -> begins a new paragraph
+      * a flush-left line that is a section header -> begins a new paragraph
+      * a flush-left line that is NOT a header     -> continues current paragraph
+      * a blank line                               -> paragraph break
+      * a pure page-number line                    -> dropped
+    The header test matters because section headers are ALSO flush-left, so
+    without it they would be wrongly glued onto the previous paragraph.
+    Soft-hyphenated word splits are repaired on join. Equations survive because
+    they are themselves indented/centered and so stay on their own lines.
+    """
+    paragraphs: list[str] = []
+    buffer = ""
+
+    def flush() -> None:
+        nonlocal buffer
+        if buffer.strip():
+            paragraphs.append(buffer.strip())
+        buffer = ""
+
+    for raw in page_text.split("\n"):
+        line = raw.rstrip()
+
+        if not line.strip():          # blank -> paragraph break
+            flush()
+            continue
+        if PAGE_NUMBER_RE.match(line):  # standalone page number -> drop
+            continue
+
+        stripped = line.lstrip()
+        indented = line[:1] in (" ", "\t")   # had leading whitespace?
+
+        if _is_break_line(stripped, heading_norms):
+            # A section header stands ALONE as its own one-line paragraph.
+            # This is essential: headers are flush-left, and (by standard
+            # typesetting) the first body line *after* a header is ALSO
+            # flush-left / un-indented. If we merely started a new buffer here,
+            # that first body line would glue onto the header. Emitting the
+            # header on its own and leaving the buffer empty makes the next
+            # flush-left line correctly begin a fresh paragraph.
+            flush()
+            paragraphs.append(stripped)
+            buffer = ""
+        elif indented:
+            # Indented line starts a normal paragraph; its flush-left
+            # continuation lines will be joined onto it below.
+            flush()
+            buffer = stripped
+        else:
+            # Flush-left, non-header line -> continuation of current paragraph
+            # (or, if the buffer is empty, the start of a new one).
+            if not buffer:
+                buffer = stripped
+            elif _looks_like_soft_hyphen(buffer, stripped):
+                buffer = buffer[:-1] + stripped      # repair soft hyphen, no space
+            else:
+                buffer = buffer + " " + stripped     # normal join with a space
+
+    flush()
+    return "\n\n".join(paragraphs)
+
+
+def reflow(raw_text: str, heading_norms: set[str] | None = None) -> str:
+    """Reflow the whole document, inserting an HTML page marker at each form feed."""
+    heading_norms = heading_norms or set()
+    pages = raw_text.split("\f")          # pdftotext separates pages with form-feed
+    out_pages = []
+    for n, page in enumerate(pages, start=1):
+        body = reflow_page(page, heading_norms)
+        if body.strip():
+            out_pages.append(f"<!-- page {n} -->\n\n{body}")
+    return "\n\n".join(out_pages) + "\n"
+
+
+# --------------------------------------------------------------------------- #
+# Stage 4 — merge: drop Markdown headings into the faithful pdftotext text    #
+# --------------------------------------------------------------------------- #
+
+
+def _norm(s: str) -> str:
+    """
+    Normalise text for robust heading matching.
+
+    Drops the leading section number, folds typographic punctuation to ASCII
+    (so pdftotext's curly "planner’s" matches liteparse's straight "planner's",
+    and "−" matches "-"), strips remaining punctuation, lowercases and collapses
+    whitespace. Used for BOTH the reflow break-detection and the fuzzy matcher,
+    so the two stages stay consistent.
+    """
+    s = SECTION_NUMBER_RE.sub("", s.strip())
+    # Fold curly quotes and dashes to their ASCII equivalents.
+    for src, dst in (("’", "'"), ("‘", "'"), ("“", '"'), ("”", '"'),
+                     ("–", "-"), ("—", "-"), ("−", "-")):
+        s = s.replace(src, dst)
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)   # drop any remaining punctuation/symbols
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+
+def match_headings(toc: list[Heading], content_lines: list[str]) -> int:
+    """
+    Locate each TOC heading inside the faithful text and record its line index.
+
+    We only consider short content lines (heading candidates) and, to respect
+    document order, search forward from the previous match. Returns the number
+    of headings successfully matched.
+    """
+    # Pre-filter candidate lines: short lines, with their normalised form cached.
+    candidates = [
+        (i, _norm(line))
+        for i, line in enumerate(content_lines)
+        if 0 < len(line.strip()) <= MAX_HEADING_LINE_CHARS
+    ]
+
+    matched = 0
+    cursor = 0  # only search at/after this candidate index (keeps ordering)
+    for h in toc:
+        hn = _norm(h.title)
+        if not hn:
+            continue
+        best_idx, best_score, best_cand = -1, 0.0, cursor
+        for pos in range(cursor, len(candidates)):
+            i, cn = candidates[pos]
+            if not cn:
+                continue
+            # Quick length gate before the (more expensive) ratio computation.
+            if len(cn) > len(hn) * 3:
+                continue
+            score = difflib.SequenceMatcher(None, hn, cn).ratio()
+            if score > best_score:
+                best_score, best_idx, best_cand = score, i, pos
+            # Candidate lines are ordered; once we're far past a good match the
+            # score only falls, but headings can be close together, so keep the
+            # full forward scan within reason.
+        if best_score >= MATCH_THRESHOLD and best_idx >= 0:
+            h.content_idx = best_idx
+            cursor = best_cand + 1
+            matched += 1
+    return matched
+
+
+def build_merged(content_lines: list[str], toc: list[Heading]) -> str:
+    """
+    Produce merged.md: the faithful pdftotext lines with a Markdown heading
+    injected at each matched heading location (replacing the bare header line).
+    """
+    # Map content-line-index -> heading to inject.
+    inject = {h.content_idx: h for h in toc if h.content_idx >= 0}
+    out: list[str] = []
+    for i, line in enumerate(content_lines):
+        if i in inject:
+            h = inject[i]
+            out.append("")                     # spacing before a section
+            out.append("#" * h.level + " " + h.title)
+            out.append("")
+        else:
+            out.append(line)
+    return "\n".join(out).rstrip() + "\n"
+
+
+# --------------------------------------------------------------------------- #
+# Stage 5 — QA: count liteparse's equation-corruption artifacts               #
+# --------------------------------------------------------------------------- #
+
+
+def scan_artifacts(structure_md: Path, report: Report) -> None:
+    """Count lines in liteparse Markdown showing injected-Markdown-in-math signatures."""
+    if not structure_md.exists():
+        return
+    count = 0
+    examples: list[str] = []
+    for line in structure_md.read_text(encoding="utf-8", errors="replace").splitlines():
+        if MATH_ARTIFACT_RE.search(line):
+            count += 1
+            if len(examples) < 5:
+                examples.append(line.strip()[:160])
+    report.liteparse_math_artifact_lines = count
+    report.artifact_examples = examples
+
+
+# --------------------------------------------------------------------------- #
+# Section extraction for --section                                            #
+# --------------------------------------------------------------------------- #
+
+
+def print_section(content_lines: list[str], toc: list[Heading], pattern: str) -> int:
+    """Print the faithful text of the first section whose title matches `pattern`."""
+    pat = pattern.strip().lower()
+    target = next((h for h in toc if pat in _norm(h.title) or pat in h.title.lower()), None)
+    if target is None or target.content_idx < 0:
+        print(f"error: no section title matching '{pattern}'", file=sys.stderr)
+        return 1
+
+    # Section spans from this heading to the next matched heading (any level).
+    start = target.content_idx
+    later = sorted(h.content_idx for h in toc if h.content_idx > start)
+    end = later[0] if later else len(content_lines)
+
+    # Print our own Markdown header and skip the raw header line (start+1) so it
+    # is not duplicated in the output.
+    print(f"# {target.title}\n")
+    print("\n".join(content_lines[start + 1:end]).strip())
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# Orchestration                                                               #
+# --------------------------------------------------------------------------- #
+
+
+def gather_outputs(outdir: Path) -> dict[str, Path]:
+    """Canonical paths for every artifact the tool produces."""
+    return {
+        "merged": outdir / "merged.md",
+        "reflowed": outdir / "content.reflowed.txt",
+        "raw": outdir / "content.raw.txt",
+        "structure": outdir / "structure.md",
+        "toc": outdir / "toc.md",
+        "report": outdir / "report.json",
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="pdfxtract.py",
+        description="Combine pdftotext (fidelity) + liteparse (structure/OCR) into one clean extraction.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("pdf", help="input PDF file")
+    parser.add_argument("-o", "--outdir", help="output directory (default: <pdf-stem>_pdfxtract)")
+    parser.add_argument("--mode", choices=["auto", "digital", "scanned"], default="auto",
+                        help="force a mode instead of auto-detecting (default: auto)")
+    parser.add_argument("--no-reflow", action="store_true",
+                        help="build merged.md from raw pdftotext (skip paragraph reflow)")
+    parser.add_argument("--toc", action="store_true", help="print the table of contents and exit")
+    parser.add_argument("--section", metavar="TEXT", help="print one section's faithful text by title substring and exit")
+    parser.add_argument("--max-pages", type=int, help="only process the first N pages (quick test)")
+    parser.add_argument("--force", action="store_true", help="re-extract even if outputs already exist")
+    parser.add_argument("--verbose", action="store_true", help="print progress to stderr")
+    args = parser.parse_args(argv)
+
+    require_binaries()
+
+    pdf = Path(args.pdf).expanduser().resolve()
+    if not pdf.is_file():
+        sys.exit(f"error: input PDF not found: {pdf}")
+
+    outdir = Path(args.outdir).expanduser().resolve() if args.outdir else pdf.with_suffix("").parent / (pdf.stem + "_pdfxtract")
+    outdir.mkdir(parents=True, exist_ok=True)
+    paths = gather_outputs(outdir)
+
+    # ----- Stage 0/1: classify + extract (cached unless --force) ------------ #
+    need_extract = args.force or not paths["raw"].exists() or not paths["structure"].exists()
+    report = Report(input=str(pdf))
+
+    if need_extract:
+        if args.mode == "auto":
+            mode, pages, ocr_pages = classify(pdf, args.max_pages, args.verbose)
+        else:
+            mode = args.mode
+            pages, ocr_pages = 0, 0
+        report.mode = mode
+        report.pages = pages
+        report.pages_needing_ocr = ocr_pages
+        log(f"mode = {mode} (pages={pages}, ocr_pages={ocr_pages})", args.verbose)
+
+        report.pdftotext_chars = extract_pdftotext(pdf, paths["raw"], args.max_pages, args.verbose)
+        report.liteparse_chars = extract_liteparse(pdf, paths["structure"], args.max_pages, args.verbose)
+    else:
+        log("reusing existing extraction (use --force to redo)", args.verbose)
+        # Recover mode from a previous report if present.
+        if paths["report"].exists():
+            try:
+                prev = json.loads(paths["report"].read_text(encoding="utf-8"))
+                report.mode = prev.get("mode", "unknown")
+                report.pages = prev.get("pages", 0)
+                report.pages_needing_ocr = prev.get("pages_needing_ocr", 0)
+            except json.JSONDecodeError:
+                pass
+        report.pdftotext_chars = len(paths["raw"].read_text(encoding="utf-8", errors="replace")) if paths["raw"].exists() else 0
+        report.liteparse_chars = len(paths["structure"].read_text(encoding="utf-8", errors="replace")) if paths["structure"].exists() else 0
+
+    # Trust decision: digital -> pdftotext primary; scanned -> liteparse primary.
+    report.recommendation = "pdftotext-primary" if report.mode != "scanned" else "liteparse-ocr-primary"
+
+    # ----- Stage 2: table of contents --------------------------------------- #
+    toc = build_toc(paths["structure"])
+    report.toc_headers = len(toc)
+    paths["toc"].write_text(toc_to_markdown(toc), encoding="utf-8")
+
+    if args.toc:
+        print(toc_to_markdown(toc), end="")
+        return 0
+
+    # ----- Scanned path: liteparse Markdown is the best we have ------------- #
+    if report.mode == "scanned":
+        # No faithful text layer to merge; promote liteparse output to merged.md.
+        shutil.copyfile(paths["structure"], paths["merged"])
+        report.notes.append("Scanned/image PDF: merged.md == liteparse (OCR) output; pdftotext has no text layer.")
+        scan_artifacts(paths["structure"], report)
+        _write_report(paths["report"], report)
+        _print_summary(report, paths, outdir)
+        return 0
+
+    # ----- Stage 3: reflow pdftotext ---------------------------------------- #
+    # Pass the known TOC titles so reflow breaks paragraphs at section headers
+    # (which are flush-left and would otherwise be glued to the prior paragraph).
+    heading_norms = {_norm(h.title) for h in toc if _norm(h.title)}
+    raw_text = paths["raw"].read_text(encoding="utf-8", errors="replace")
+    if args.no_reflow:
+        merged_source_text = raw_text
+        paths["reflowed"].write_text(raw_text, encoding="utf-8")
+    else:
+        reflowed_text = reflow(raw_text, heading_norms)
+        paths["reflowed"].write_text(reflowed_text, encoding="utf-8")
+        merged_source_text = reflowed_text
+
+    # ----- Stage 4: merge headings into faithful text ----------------------- #
+    content_lines = merged_source_text.split("\n")
+    matched = match_headings(toc, content_lines)
+    report.matched_headers = matched
+    report.unmatched_headers = [h.title for h in toc if h.content_idx < 0]
+    paths["merged"].write_text(build_merged(content_lines, toc), encoding="utf-8")
+
+    # ----- Stage 5: QA ------------------------------------------------------ #
+    scan_artifacts(paths["structure"], report)
+
+    _write_report(paths["report"], report)
+
+    # ----- Optional: dump a single section ---------------------------------- #
+    if args.section:
+        return print_section(content_lines, toc, args.section)
+
+    _print_summary(report, paths, outdir)
+    return 0
+
+
+def _write_report(path: Path, report: Report) -> None:
+    """Persist the QA report as pretty JSON."""
+    path.write_text(json.dumps(asdict(report), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _print_summary(report: Report, paths: dict[str, Path], outdir: Path) -> None:
+    """Print a concise human-readable summary of what was produced."""
+    print(f"input        : {report.input}")
+    print(f"mode         : {report.mode}  (trust: {report.recommendation})")
+    if report.pages:
+        print(f"pages        : {report.pages}  (needing OCR: {report.pages_needing_ocr})")
+    print(f"pdftotext    : {report.pdftotext_chars} chars   liteparse: {report.liteparse_chars} chars")
+    print(f"toc headings : {report.toc_headers}  matched into text: {report.matched_headers}")
+    if report.unmatched_headers:
+        shown = ", ".join(report.unmatched_headers[:6])
+        more = "" if len(report.unmatched_headers) <= 6 else f" (+{len(report.unmatched_headers) - 6} more)"
+        print(f"unmatched    : {shown}{more}")
+    if report.liteparse_math_artifact_lines:
+        print(f"qa           : {report.liteparse_math_artifact_lines} liteparse lines with math artifacts "
+              f"-> read those from content.raw.txt")
+    for note in report.notes:
+        print(f"note         : {note}")
+    print(f"output dir   : {outdir}")
+    print(f"  deliverable: {paths['merged'].name}  (+ {paths['reflowed'].name}, {paths['raw'].name}, "
+          f"{paths['structure'].name}, {paths['toc'].name}, {paths['report'].name})")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

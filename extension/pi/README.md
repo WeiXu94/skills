@@ -47,14 +47,44 @@ the default scope to 400s (extensible via `ERROR_TYPES`).
 
 ### [`firecrawl-web.ts`](./firecrawl-web.ts)
 
-Exposes two web tools mirroring Claude Code's WebSearch / WebFetch:
+Multi-backend web search & fetch with automatic rate-limit failover:
 
-- `websearch` — web search via Firecrawl `POST /v2/search` (ranked results)
-- `webfetch` — fetch one URL via Firecrawl `POST /v2/scrape` (clean markdown)
+- `websearch` — search the web, returns ranked title/URL/snippet results
+- `webfetch` — fetch a URL as clean markdown (or AI summary via Firecrawl)
 
-Keyless by default (~1,000 free credits/mo per IP); set `FIRECRAWL_API_KEY` for
-higher limits. Searches are serialized with a throttle gap to stay within
-keyless limits.
+**Backends** (preference order, set `WEB_BACKEND_ORDER=exa,firecrawl` to swap):
+
+| # | Backend   | Protocol        | Auth    | Limits                        |
+|---|-----------|-----------------|---------|-------------------------------|
+| 1 | Firecrawl | HTTP API        | keyless | ~1,000 free credits/mo per IP |
+| 2 | Exa       | MCP Streamable HTTP | keyless | free tier, rate-limited     |
+
+Both backends are keyless by default. Set `FIRECRAWL_API_KEY` or `EXA_API_KEY`
+for higher limits.
+
+**Load balancing**: when a backend returns HTTP 429/402 or an error mentioning
+quota/credit/rate-limit, it enters exponential cooldown (base 60 s, max 5 min)
+and the next backend is tried automatically. Non-limit errors (invalid params,
+auth failures) propagate directly — no pointless failover.
+
+**Env overrides**:
+
+| Variable                      | Default                              |
+|-------------------------------|--------------------------------------|
+| `FIRECRAWL_API_KEY`           | (keyless)                            |
+| `FIRECRAWL_API_URL`           | `https://api.firecrawl.dev/v2`       |
+| `FIRECRAWL_WEB_MAX_RESULTS`   | `5` (hard cap 10)                    |
+| `FIRECRAWL_WEB_MIN_INTERVAL_MS` | `1000`                             |
+| `EXA_MCP_URL`                 | `https://mcp.exa.ai/mcp`             |
+| `EXA_API_KEY`                 | (keyless)                            |
+| `WEB_BACKEND_ORDER`           | `firecrawl,exa`                      |
+| `WEB_BACKEND_COOLDOWN_MS`     | `60000` (1 min, base cooldown)       |
+| `WEB_BACKEND_MAX_COOLDOWN_MS` | `300000` (5 min, circuit-breaker cap) |
+
+The Exa backend uses a minimal MCP Streamable HTTP client (plain `fetch` + SSE
+parsing — no `@modelcontextprotocol/sdk` dependency), so the file still requires
+no npm install. Each call goes through a global throttle (`MIN_INTERVAL_MS` gap)
+to stay within keyless rate limits across all backends.
 
 ## Test fixtures
 
@@ -73,4 +103,16 @@ extension retries without crashing.
 ```sh
 bun test extension/pi/retry.test.ts
 RUN_SECS=20 MIN_REQUESTS=4 bun test extension/pi/retry.test.ts
+```
+
+### [`firecrawl-web.test.ts`](./firecrawl-web.test.ts)
+
+Unit + integration tests for `firecrawl-web.ts`. Covers SSE parsing, Exa search
+result parsing, error classification (rate-limit / network / session), backend
+cooldown state machine, circuit-breaker math, `withFailover` failover logic, and
+`ExaMcpSession` MCP lifecycle (with mocked `fetch`). No network, no pi process
+spawned — runs in ~20 ms.
+
+```sh
+bun test extension/pi/firecrawl-web.test.ts
 ```
