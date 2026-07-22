@@ -21,6 +21,7 @@ repo  juliusbrussee https://github.com/JuliusBrussee/caveman.git
 repo  badlogic  https://github.com/badlogic/pi-skills.git
 repo  zhaoxuya520  https://github.com/zhaoxuya520/reverse-skill.git
 repo  ogulcancelik  https://github.com/ogulcancelik/herdr.git
+repo  nutlope  https://github.com/Nutlope/hallmark.git
 
 skill mattpocock  skills/in-progress/writing-beats                  writing-beats
 skill mattpocock  skills/engineering/improve-codebase-architecture  improve-codebase-architecture
@@ -55,6 +56,7 @@ skill mattpocock  skills/in-progress/claude-handoff  claude-handoff
 skill mattpocock  skills/engineering/research  research
 skill mattpocock  skills/engineering/to-tickets  to-tickets
 skill mattpocock  skills/engineering/to-spec  to-spec
+skill mattpocock  skills/in-progress/batch-grill-me  batch-grill-me
 skill zhaoxuya520  skills/api-security  api-security
 skill zhaoxuya520  skills/apk-reverse  apk-reverse
 skill zhaoxuya520  skills/attack-chain  attack-chain
@@ -77,3 +79,4 @@ skill zhaoxuya520  skills/radare2  radare2
 skill zhaoxuya520  skills/reverse-engineering  reverse-engineering
 skill zhaoxuya520  skills/supply-chain-security  supply-chain-security
 skill ogulcancelik  SKILL.md  herdr
+skill nutlope  skills/hallmark  hallmark
