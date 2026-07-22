@@ -1,7 +1,6 @@
 ---
 name: pdfxtract
 description: PDF extraction via the pdfxtract CLI, which pairs pdftotext (faithful math/accents) with liteparse (Markdown structure, OCR). Use when extracting or parsing text from a PDF, summarizing a paper/document, listing a PDF's sections, or pulling one section out by name.
-disable-model-invocation: true
 ---
 
 # pdfxtract
@@ -11,7 +10,7 @@ CLI that extracts a PDF by combining **pdftotext** (faithful glyphs — math, ac
 ## Invoke
 
 ```bash
-<basedir>/pdfxtract <input.pdf> [flags]
+<basedir>/scripts/pdfxtract <input.pdf> [flags]
 ```
 
 ## Flags
