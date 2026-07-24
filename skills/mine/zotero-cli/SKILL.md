@@ -1,6 +1,6 @@
 ---
 name: zotero-cli
-description: Search and manage a local Zotero library from the command line via the `zot` CLI. Use this skill whenever the user asks about academic papers, wants to find a reference they've saved, searches by author/year/title (keyword) or by topic/concept (semantic), wants to export a paper's BibTeX (by Zotero key or by search), or wants to rebuild the Zotero semantic search index. Trigger this for phrases like "find my paper on X", "what do I have saved about Y", "search Zotero", "Zotero library", "my references on Z", "summarize my paper on W", "get the bibtex for X", "export citation for Y", or when the user mentions a paper they know they've added but doesn't recall the exact title. Also trigger when the user wants to update the Zotero semantic search database.
+description: Zotero library search, citation export, and index management via the `zot` CLI. Use when the user wants to find or search their saved papers/references — by author/year/title (keyword) or by topic/concept (semantic), including when they don't recall the exact title; summarize or read a saved paper; export a paper's BibTeX/citation; or update/rebuild the Zotero semantic search index.
 ---
 
 # Zotero CLI (`zot`)
@@ -97,6 +97,10 @@ The `key` field is the Zotero item key — keep it; it's needed for any follow-u
 
 **"Find papers similar to this one"** — pull the abstract (search by key, read `abstract`), pipe to `zot search -s`.
 
-**"Export BibTeX for these papers"** — `zot bibtex <KEY|"query">` (Better BibTeX by default; pass `--native` for Zotero's built-in exporter). The argument is a Zotero key (8 uppercase alphanumerics) or a search query; on multiple matches the command prints a disambiguation list to stderr and exits non-zero.
+**"Export BibTeX for these papers"** — `zot bibtex <KEY|"query">`. The argument is a Zotero key (8 uppercase alphanumerics) or a search query; on multiple matches the command prints a disambiguation list to stderr and exits non-zero.
+
+## When a command fails
+
+`zot` prints errors to stderr. Before reporting failure to the user, see README.md § Troubleshooting — the usual causes (Zotero desktop stopped, `zotero-mcp-server` not installed, stale index) each have a one-line fix there.
 
 

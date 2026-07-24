@@ -1,6 +1,6 @@
 # zotero-cli skill
 
-A two-command Python CLI (`zot`) that wraps Zotero's local API and `zotero-mcp`'s ChromaDB index, packaged as a Claude Code skill.
+A three-command Python CLI (`zot`) — `search`, `bibtex`, `update-db` — that wraps Zotero's local API and `zotero-mcp`'s ChromaDB index, packaged as a Claude Code skill.
 
 ## What's in here
 
@@ -9,7 +9,7 @@ zotero-cli/
 ├── SKILL.md                       # the skill description Claude reads
 ├── README.md                      # this file
 └── scripts/
-    └── zot                        # single-file Python CLI (~220 lines)
+    └── zot                        # single-file Python CLI (~450 lines)
 ```
 
 ## Prerequisites
@@ -53,12 +53,15 @@ zot search -a "RLHF for code"                  # auto: keyword → semantic fall
 zot search "ML" -n 5 -t "-attachment"          # limit + item type
 zot search "ML" -c COLLECTION_KEY              # restrict to collection (keyword only)
 
+zot bibtex ABC123XY                            # BibTeX by Zotero key (Better BibTeX)
+zot bibtex "Autor 2013" --native              # BibTeX by search query, native exporter
+
 zot update-db                                  # rebuild index, metadata-only
 zot update-db --fulltext                       # include PDF fulltext
 zot update-db --fulltext --force-rebuild       # nuke and rebuild
 ```
 
-Output is JSON on stdout. Errors and progress on stderr.
+Search output is JSON on stdout; `bibtex` prints raw `.bib` text. Errors and progress on stderr.
 
 ## Architecture in 30 seconds
 
@@ -69,8 +72,11 @@ zot                                                       # one Python file
 │   │   └── urllib → http://localhost:23119/api/users/0/...   # Zotero local API
 │   ├── --semantic
 │   │   └── from zotero_mcp.chroma_client import ...          # in-process import
-│   │       └── client.query(...)                             # ChromaDB ANN search
+│   │       └── client.search(...)                            # ChromaDB ANN search
 │   └── --auto: keyword first, semantic fallback if 0 hits
+│
+├── bibtex
+│   └── urllib → .../items/<KEY>?format=bibtex&translator=<BBT>  # Better BibTeX (falls back to native)
 │
 └── update-db
     └── subprocess.call(["zotero-mcp", "update-db", ...])     # delegates entirely
@@ -82,30 +88,16 @@ Single language, single process. Semantic search loads the embedding model once 
 
 ## Limitations
 
-- Read-only. Local API doesn't support writes.
-- Tag-only filters work poorly with keyword mode (Zotero `qmode=titleCreatorYear` doesn't index tags reliably). Use semantic for tag-heavy queries, or extend the script.
-- Single-user assumption (`ZOTERO_USER_ID=0`). Set the env var if you have a non-default setup.
-- Python 3.10+ required for type union syntax. Lower it by replacing `str | None` with `Optional[str]` if you need 3.9.
+- **Read-only.** The local API doesn't support writes. For writes, the user needs `ZOTERO_API_KEY` and a different tool.
+- **Tag-heavy queries:** tag-only filters (`#foo`) work poorly with keyword mode (`qmode=titleCreatorYear` doesn't index tags reliably). Use semantic for tag-heavy queries.
+- **Single-user assumption** (`ZOTERO_USER_ID=0`). Set the env var for non-default setups.
+- **Python 3.10+** for the `str | None` syntax (replace with `Optional[str]` for 3.9).
 
-## Limitations to flag to the user
+## Troubleshooting
 
-- **Local API must be enabled.** Zotero desktop must be running with "Allow other applications on this computer to communicate with Zotero" enabled (Settings → Advanced → General). If keyword search returns connection errors, this is almost always why.
-- **Semantic depends on `zotero-mcp` being installed and `update-db` having been run.** If `zot search -s` errors with "cannot import zotero_mcp", run `pip install zotero-mcp-server` (or `pipx inject zotero-mcp-server zotero-mcp-server` if zotero-mcp was installed via pipx). If it errors with "no such collection" or returns 0 results, run `zot update-db --fulltext` first.
-- **Tag filters** (`#foo`) aren't reliably matched by `qmode=titleCreatorYear`. For tag-heavy queries, mention this caveat or suggest the user try semantic mode instead.
-- **Local API is read-only.** This skill cannot create/modify items. For writes, the user needs `ZOTERO_API_KEY` and a different tool.
-
-## Installation (for reference, in case the user asks)
-
-```bash
-chmod +x scripts/zot
-ln -s "$PWD/scripts/zot" ~/.local/bin/zot   # or copy
-
-zot --help
-zot search "test" -n 1                       # tests Zotero local API
-zot search -s "test" -n 1                    # tests ChromaDB access
-```
-
-`zot` is a single Python file with **no third-party imports** beyond what `zotero_mcp` already pulls in. The shebang line uses `python3` — whichever Python is on PATH must have `zotero-mcp-server` importable (for semantic mode only; keyword mode uses only stdlib).
+- **Connection errors on keyword search** → Zotero desktop isn't running, or the local API is disabled (Settings → Advanced → "Allow other applications on this computer to communicate with Zotero").
+- **`cannot import zotero_mcp` on semantic search** → `zotero-mcp-server` isn't installed for the interpreter in use: `pip install zotero-mcp-server` (or `pipx inject zotero-mcp-server zotero-mcp-server` if via pipx).
+- **"no such collection" or 0 semantic results** → the index is missing or stale: run `zot update-db --fulltext` first.
 
 ## Environment variables (rarely needed)
 
