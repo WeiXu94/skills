@@ -1,0 +1,5 @@
+interface:
+  display_name: "Econ Paper Writing"
+  short_description: "You should use this skill when the user asks to write, edit or polish part of an economics research paper or make a draft paper from scratch."
+policy:
+  allow_implicit_invocation: true

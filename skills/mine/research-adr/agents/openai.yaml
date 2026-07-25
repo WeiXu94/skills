@@ -1,0 +1,5 @@
+interface:
+  display_name: "Research ADR"
+  short_description: "Write a research ADR for a settled, consequential identification, sample, data, model, or method choice among genuinely live alternatives. Use when the user asks to ADR, record, log, or document that decision; when discussing why one approach beat alternatives; or when a choice explicitly replaces a prior ADR."
+policy:
+  allow_implicit_invocation: false

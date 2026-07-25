@@ -1,0 +1,5 @@
+interface:
+  display_name: "Econ Paper Writing Shape"
+  short_description: "Draft an econ paper section by section into sections/*.tex — fixed skeleton, grow each section from the materials pile, grill weak prose. Pairs with econ-paper-writing-fragments."
+policy:
+  allow_implicit_invocation: false

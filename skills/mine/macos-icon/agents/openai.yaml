@@ -2,3 +2,5 @@ interface:
   display_name: "macOS Icon"
   short_description: "Generate and validate macOS app icon assets."
   default_prompt: "Create or validate a macOS app icon from source artwork."
+policy:
+  allow_implicit_invocation: true

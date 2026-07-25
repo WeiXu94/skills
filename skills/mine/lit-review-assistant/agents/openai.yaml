@@ -1,0 +1,5 @@
+interface:
+  display_name: "Lit Review Assistant"
+  short_description: "Helps economists conduct literature reviews by structuring searches, summarizing papers, and synthesizing findings. Provides templates for organizing literature and identifying research gaps. Use when starting a literature review, finding related work for a paper's introduction, synthesizing existing evidence, or identifying gaps in the literature."
+policy:
+  allow_implicit_invocation: true

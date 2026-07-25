@@ -1,0 +1,5 @@
+interface:
+  display_name: "Design"
+  short_description: "Design distinctive UI and visual work against your own design system. Use when building or restyling a web or desktop app, making a slide deck or presentation, drawing an SVG app icon or canvas/poster art, when something looks generic or "AI slop" and needs polish, or when creating or editing your own design system (DESIGN.md)."
+policy:
+  allow_implicit_invocation: true

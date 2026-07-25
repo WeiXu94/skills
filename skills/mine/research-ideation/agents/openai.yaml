@@ -1,0 +1,5 @@
+interface:
+  display_name: "Research Ideation"
+  short_description: "Helps economists generate and refine research questions by applying economic thinking frameworks, guiding from phenomena observation to testable hypotheses. Use when starting a new research project, brainstorming dissertation topics, finding angles for policy analysis, or developing extensions of existing work."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Matlab Econ Model Estimator"
+  short_description: "Perform economics model parameter estimation in MATLAB"
+policy:
+  allow_implicit_invocation: true

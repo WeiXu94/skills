@@ -1,0 +1,5 @@
+interface:
+  display_name: "Econ Paper Writing Fragments"
+  short_description: "Inventory scattered econ-paper materials — tables, figures, data, model, literature, code — into one evidence pile, each exhibit with its takeaway, ready to draft from. Pairs with econ-paper-writing-shape."
+policy:
+  allow_implicit_invocation: false

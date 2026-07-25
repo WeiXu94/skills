@@ -1,0 +1,5 @@
+interface:
+  display_name: "Stata CIL"
+  short_description: "Run Stata do-files in batch mode via scripts/statab with trustworthy exit codes on r(#) errors. Use when the user wants to run Stata from the shell/agent, check whether a Stata script succeeded, surface Stata return codes, or mentions stata-cil / statab."
+policy:
+  allow_implicit_invocation: true

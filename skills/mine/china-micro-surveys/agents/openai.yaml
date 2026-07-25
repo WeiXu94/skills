@@ -1,0 +1,5 @@
+interface:
+  display_name: "China Micro Surveys"
+  short_description: "Catalog and workflow for Chinese micro survey datasets (household, individual, firm) including key metadata, waves, hosts, topics, access, and suitability. Use when a user asks about Chinese microdata sources, wants to pick a dataset for an economics research idea, or needs guidance on which survey fits a question."
+policy:
+  allow_implicit_invocation: true

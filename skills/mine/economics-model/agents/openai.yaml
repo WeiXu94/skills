@@ -1,0 +1,5 @@
+interface:
+  display_name: "Economics Model"
+  short_description: "An overview of some important and widely used economics model. Use this skill when needing a economic model to analyze questions."
+policy:
+  allow_implicit_invocation: true

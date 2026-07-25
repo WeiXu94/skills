@@ -1,0 +1,5 @@
+interface:
+  display_name: "Netnewswire CLI"
+  short_description: "Read, summarize, and search articles in NetNewsWire (the macOS RSS reader) from the command line via AppleScript. Use this skill whenever the user mentions NetNewsWire, NNW, RSS feeds on a Mac, daily news digests from their reader, or summarizing today's articles. Also use when the user asks to "summarize my feeds", "what's new in my RSS", or "give me a digest" — even if they don't say "NetNewsWire" explicitly, this is the right tool when the source is a local Mac RSS reader. Do not use for fetching arbitrary RSS feeds from the open web (use a feed parser for that), and do not use on non-macOS systems."
+policy:
+  allow_implicit_invocation: true

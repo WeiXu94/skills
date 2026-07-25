@@ -1,0 +1,5 @@
+interface:
+  display_name: "Zotero CLI"
+  short_description: "Zotero library search, citation export, and index management via the `zot` CLI. Use when the user wants to find or search their saved papers/references — by author/year/title (keyword) or by topic/concept (semantic), including when they don't recall the exact title; summarize or read a saved paper; export a paper's BibTeX/citation; or update/rebuild the Zotero semantic search index."
+policy:
+  allow_implicit_invocation: true
