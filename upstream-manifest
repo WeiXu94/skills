@@ -43,9 +43,10 @@ skill juliusbrussee skills/caveman                                  caveman
 skill mattpocock  skills/engineering/domain-modeling                domain-modeling
 skill mattpocock  skills/engineering/prototype                      prototype
 skill mattpocock  skills/engineering/tdd  tdd
-skill mattpocock  skills/engineering/resolving-merge-conflicts  resolving-merge-conflicts
 skill mattpocock  skills/engineering/code-review  code-review
 skill mattpocock  skills/engineering/implement  implement
+skill mattpocock  skills/engineering/implement-spec  implement-spec
+skill mattpocock  skills/engineering/retro  retro
 skill mattpocock  skills/engineering/triage  triage
 skill mattpocock  skills/engineering/ask-matt  ask-matt
 skill mattpocock  skills/productivity/teach  teach
@@ -55,7 +56,6 @@ skill mattpocock  skills/in-progress/claude-handoff  claude-handoff
 skill mattpocock  skills/engineering/research  research
 skill mattpocock  skills/engineering/to-tickets  to-tickets
 skill mattpocock  skills/engineering/to-spec  to-spec
-skill mattpocock  skills/in-progress/batch-grill-me  batch-grill-me
 skill zhaoxuya520  skills/api-security  api-security
 skill zhaoxuya520  skills/apk-reverse  apk-reverse
 skill zhaoxuya520  skills/attack-chain  attack-chain
@@ -77,5 +77,5 @@ skill zhaoxuya520  skills/pwn-chain  pwn-chain
 skill zhaoxuya520  skills/radare2  radare2
 skill zhaoxuya520  skills/reverse-engineering  reverse-engineering
 skill zhaoxuya520  skills/supply-chain-security  supply-chain-security
-skill ogulcancelik  SKILL.md  herdr
+skill ogulcancelik  skills/herdr  herdr
 skill nutlope  skills/hallmark  hallmark
