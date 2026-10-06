@@ -73,6 +73,9 @@ the listed folders into `~/.cache/upstream-skills`, and copies each into
 - Don't hand-edit a vendored skill dir; the next sync overwrites it. To
   customize one, copy it into `skills/mine/`; `link-skills` prefers `mine/` on a
   name clash, so the vendored copy keeps tracking upstream while your fork is linked.
+- `skills/vendor/` is gitignored (local only, always re-syncable from the
+  manifest): never `git add`/`git add -f` vendored files; a fresh clone restores
+  them with one `sync-upstream-skills.sh` run.
 
 Vendored skills are NOT auto-synced; run `scripts/sync-upstream-skills.sh` (all)
 or `scripts/add-skill-from-url <url>` (one) when you want to pull upstream.

@@ -141,13 +141,21 @@ for repo in "${REPOS[@]}"; do
 
   if [ "$remote_sha" = "$local_sha" ]; then
     echo "==> [$key] up to date at ${remote_sha:0:12}; skipping fetch"
+    # The wanted paths can change at an unchanged tip (skill added/moved in
+    # the manifest, or a file-src skill became a dir skill): re-materialize
+    # the worktree so newly wanted paths exist. -f because checkout -B alone
+    # is a no-op when the branch already sits at the target commit. Cheap
+    # when nothing changed.
+    if [ ${#dir_paths[@]} -gt 0 ]; then
+      git -C "$mirror" checkout -f -B "$branch" "origin/$branch" >/dev/null 2>&1
+    fi
   else
     echo "==> [$key] upstream at ${remote_sha:0:12}; fetching $branch"
     git -C "$mirror" fetch --depth 1 origin "$branch"
     # For directory skills we need a checked-out worktree. For file-only skills
     # pointing FETCH_HEAD is enough for `git show` — skip worktree materialize.
     if [ ${#dir_paths[@]} -gt 0 ]; then
-      git -C "$mirror" checkout -B "$branch" "origin/$branch" >/dev/null 2>&1
+      git -C "$mirror" checkout -f -B "$branch" "origin/$branch" >/dev/null 2>&1
     else
       git -C "$mirror" update-ref "refs/heads/$branch" "origin/$branch"
       git -C "$mirror" symbolic-ref HEAD "refs/heads/$branch" 2>/dev/null || true
